@@ -3,7 +3,7 @@ name = "wayclicker"
 version = "0.1.0"
 edition = "2021"
 description = "Rust-based autoclicker for wayland"
-license = "GPL 3.0"
+license = "GPL-3.0"
 repository = "https://github.com/coderspark/wayclicker/"
 homepage = "https://github.com/coderspark/wayclicker/"
 
