@@ -1,14 +1,13 @@
 [package]
 name = "wayclicker"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 description = "Rust-based autoclicker for wayland"
 license = "GPL-3.0"
-repository = "https://github.com/coderspark/wayclicker/"
-homepage = "https://github.com/coderspark/wayclicker/"
+repository = "https://github.com/Shringe/wayclicker/"
+homepage = "https://github.com/Shringe/wayclicker/"
 
 [dependencies]
-anyhow = "1.0.99"
 clap = { version = "4.5.47", features = ["derive"] }
 evdev = "0.13.1"
 uinput = "0.1.3"
