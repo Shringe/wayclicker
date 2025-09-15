@@ -1,61 +1,52 @@
-use std::{error::Error, process::exit};
+use std::{error::Error, process::exit, thread, time::Duration};
 
 // Uinput is used for send the inputs
-use uinput::event::{
-    controller::Mouse::{Left, Right},
-    keyboard::Key,
-    keyboard::Keyboard::All,
-};
+use uinput::event::controller::Mouse;
 
 // Evdev is used for detecting keyboard input globally
-use evdev::{Device, KeyCode};
+use evdev::Device;
 
 // Object oriented because it's easier for managing the device variable.
 pub struct Server {
     device: uinput::device::Device,
+    /// Amount of time to sleep in between clicks
+    interval: Duration,
+    active: bool,
 }
 
 impl Server {
-    // Creates clicker.
-    pub fn new() -> Self {
-        let device = uinput::default()
-            .unwrap()
-            .name("device")
-            .unwrap()
-            .event(Left)
-            .unwrap()
-            .event(All)
-            .unwrap()
-            .create()
-            .unwrap();
+    // Creates the server and clicker
+    pub fn default() -> Result<Self, Box<dyn Error>> {
+        let device = uinput::default()?
+            .name("device")?
+            .event(Mouse::Left)?
+            .create()?;
 
-        Self { device }
+        Ok(Self {
+            device,
+            interval: Duration::from_millis(50),
+            active: false,
+        })
     }
 
-    // Sends click.
-    pub fn click(&mut self, click_type: u8) -> Result<(), Box<dyn Error>> {
-        match click_type {
-            0 => {
-                // Left Click.
-                self.device.send(Left, 1)?;
-                self.device.synchronize()?;
-                self.device.send(Left, 0)?;
-                self.device.synchronize()?;
+    /// Runs the server loop
+    pub fn run(&mut self) {
+        todo!();
+        loop {
+            if self.active {
+                self.click();
             }
-            1 => {
-                // Right Click.
-                self.device.send(Right, 1)?;
-                self.device.synchronize()?;
-                self.device.send(Right, 0)?;
-                self.device.synchronize()?;
-            }
-            2 => {
-                // Space Bar.
-                self.device.click(&Key::Space)?;
-                self.device.synchronize()?;
-            }
-            _ => { /* Only here so that the compiler doesn't get mad at me. */ }
+
+            thread::sleep(self.interval);
         }
+    }
+
+    // Sends a left click
+    pub fn click(&mut self) -> Result<(), Box<dyn Error>> {
+        self.device.send(Mouse::Left, 1)?;
+        self.device.synchronize()?;
+        self.device.send(Mouse::Left, 0)?;
+        self.device.synchronize()?;
         Ok(())
     }
 }
