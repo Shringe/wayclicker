@@ -41,10 +41,10 @@ use clap::Parser;
 // }
 
 fn start_server() {
-    let mut server = Server::new();
+    let mut server = Server::default().expect("Failed to get clicker");
     let pause = Duration::from_millis(500);
     sleep(pause);
-    let _ = server.click(0);
+    let _ = server.click();
 }
 
 fn main() {
