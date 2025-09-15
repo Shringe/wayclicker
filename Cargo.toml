@@ -8,6 +8,7 @@ repository = "https://github.com/coderspark/wayclicker/"
 homepage = "https://github.com/coderspark/wayclicker/"
 
 [dependencies]
+anyhow = "1.0.99"
 clap = { version = "4.5.47", features = ["derive"] }
 evdev = "0.13.1"
 uinput = "0.1.3"
