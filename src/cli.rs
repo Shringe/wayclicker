@@ -4,8 +4,13 @@ use std::path::PathBuf;
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Args {
+    /// What mode to run the prorgam in
     #[command(subcommand)]
     pub mode: Mode,
+
+    /// Whether to actually click the mouse
+    #[arg(long)]
+    pub debug: bool,
 }
 
 #[derive(Subcommand, Debug)]
