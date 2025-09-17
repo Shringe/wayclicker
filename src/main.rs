@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use crate::server::Server;
 use clap::Parser;
-use evdev::{Device, KeyCode};
+use evdev::Device;
 
 fn main() {
     let args = cli::Args::parse();
