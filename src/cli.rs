@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use evdev::KeyCode;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -24,6 +25,10 @@ pub enum Mode {
         /// Time to sleep in between clicks
         #[arg(long, default_value_t = 50)]
         interval: u64,
+
+        /// Keybind to toggle the hotkey. Should be prefixed with KEY_
+        #[arg(long, value_name = "KEY_F8")]
+        keybind: KeyCode,
     },
     Client,
     /// Lists input devices. May need root to see all devices.
