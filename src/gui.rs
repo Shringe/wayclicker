@@ -1,10 +1,11 @@
-use gtk4::prelude::*;
-use gtk4::{
+use gtk::prelude::*;
+use gtk::{
     Application, ApplicationWindow, Box, Button, Entry, Label, Orientation, ScrolledWindow,
     Separator, TextView,
 };
+use gtk4 as gtk;
 
-const APP_ID: &str = "com.example.autoclicker";
+const APP_ID: &str = "com.github.wayclicker";
 
 pub fn main() {
     let app = Application::builder().application_id(APP_ID).build();
@@ -19,12 +20,15 @@ fn build_ui(app: &Application) {
     // Main window
     let window = ApplicationWindow::builder()
         .application(app)
-        .title("Autoclicker GUI")
-        .default_width(600)
-        .default_height(400)
+        .title("wayclicker")
+        .default_width(400)
+        .default_height(600)
         .build();
 
     window.set_resizable(false);
+
+    // Reusable
+    let separator = Separator::new(Orientation::Horizontal);
 
     // Main container
     let main_box = Box::new(Orientation::Vertical, 10);
@@ -32,15 +36,6 @@ fn build_ui(app: &Application) {
     main_box.set_margin_bottom(10);
     main_box.set_margin_start(10);
     main_box.set_margin_end(10);
-
-    // Title
-    let title = Label::new(Some("Autoclicker Control Panel"));
-    title.add_css_class("title-1");
-    main_box.append(&title);
-
-    // Separator
-    let separator1 = Separator::new(Orientation::Horizontal);
-    main_box.append(&separator1);
 
     // Server control section
     let control_box = Box::new(Orientation::Horizontal, 10);
@@ -54,26 +49,21 @@ fn build_ui(app: &Application) {
     stop_button.add_css_class("destructive-action");
     stop_button.set_sensitive(false);
 
-    let quit_button = Button::with_label("Quit");
-    quit_button.add_css_class("destructive-action");
-
     control_box.append(&start_button);
     control_box.append(&stop_button);
-    control_box.append(&quit_button);
-
     main_box.append(&control_box);
 
     // Configuration section
     let config_label = Label::new(Some("Server Configuration"));
     config_label.add_css_class("heading");
-    config_label.set_halign(gtk4::Align::Start);
+    config_label.set_halign(gtk::Align::Start);
     main_box.append(&config_label);
 
     // Device path
     let device_box = Box::new(Orientation::Horizontal, 10);
     let device_label = Label::new(Some("Device Path:"));
     device_label.set_size_request(120, -1);
-    device_label.set_halign(gtk4::Align::Start);
+    device_label.set_halign(gtk::Align::Start);
     let device_entry = Entry::new();
     device_entry.set_placeholder_text(Some("/dev/input/event0"));
     device_box.append(&device_label);
@@ -84,7 +74,7 @@ fn build_ui(app: &Application) {
     let interval_box = Box::new(Orientation::Horizontal, 10);
     let interval_label = Label::new(Some("Interval (ms):"));
     interval_label.set_size_request(120, -1);
-    interval_label.set_halign(gtk4::Align::Start);
+    interval_label.set_halign(gtk::Align::Start);
     let interval_entry = Entry::new();
     interval_entry.set_text("50");
     interval_box.append(&interval_label);
@@ -95,7 +85,7 @@ fn build_ui(app: &Application) {
     let keybind_box = Box::new(Orientation::Horizontal, 10);
     let keybind_label = Label::new(Some("Keybind:"));
     keybind_label.set_size_request(120, -1);
-    keybind_label.set_halign(gtk4::Align::Start);
+    keybind_label.set_halign(gtk::Align::Start);
     let keybind_entry = Entry::new();
     keybind_entry.set_text("KEY_F5");
     keybind_entry.set_placeholder_text(Some("KEY_F8"));
@@ -105,18 +95,10 @@ fn build_ui(app: &Application) {
 
     // List devices button
     let list_devices_button = Button::with_label("List Input Devices");
+    main_box.append(&separator);
     main_box.append(&list_devices_button);
 
-    // Separator
-    let separator2 = Separator::new(Orientation::Horizontal);
-    main_box.append(&separator2);
-
-    // Output section
-    let output_label = Label::new(Some("Device List / Server Output"));
-    output_label.add_css_class("heading");
-    output_label.set_halign(gtk4::Align::Start);
-    main_box.append(&output_label);
-
+    // List inputs
     let scrolled_window = ScrolledWindow::builder()
         .height_request(200)
         .vexpand(true)
@@ -127,6 +109,7 @@ fn build_ui(app: &Application) {
     text_view.set_monospace(true);
 
     scrolled_window.set_child(Some(&text_view));
+    scrolled_window.add_css_class("frame");
     main_box.append(&scrolled_window);
 
     window.set_child(Some(&main_box));
@@ -142,10 +125,6 @@ fn build_ui(app: &Application) {
 
     list_devices_button.connect_clicked(|_| {
         println!("List devices button clicked");
-    });
-
-    quit_button.connect_clicked(move |_| {
-        println!("Quit button clicked");
     });
 
     window.present();
