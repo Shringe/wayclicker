@@ -30,6 +30,7 @@ pub enum Mode {
         #[arg(long, value_name = "KEY_F8")]
         keybind: KeyCode,
     },
+    /// Runs the gui
     Client,
     /// Lists input devices. May need root to see all devices.
     List,

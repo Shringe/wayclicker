@@ -33,6 +33,7 @@
           # Runtime dependencies
           buildInputs = with pkgs; [
             libudev-zero
+            gtk4
           ];
 
           cargoLock.lockFile = ./Cargo.lock;
@@ -49,6 +50,7 @@
 
             libudev-zero
             pkg-config
+            gtk4
           ];
         };
       }
