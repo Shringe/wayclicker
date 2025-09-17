@@ -11,11 +11,14 @@ fn main() {
     let args = cli::Args::parse();
 
     match args.mode {
-        cli::Mode::Server { device, interval } => {
+        cli::Mode::Server {
+            device,
+            interval,
+            keybind,
+        } => {
             let listenor = Device::open(device).unwrap();
             let interval = Duration::from_millis(interval);
-            let hotkey = KeyCode::KEY_F5;
-            let mut server = Server::new(listenor, interval, hotkey, args.debug)
+            let mut server = Server::new(listenor, interval, keybind, args.debug)
                 .expect("Failed to get create server");
             server.run();
         }
