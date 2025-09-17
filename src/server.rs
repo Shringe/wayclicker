@@ -52,6 +52,7 @@ pub struct Server {
     clicker: uinput::device::Device,
     hotkey: HotKey,
     interval: Duration,
+    debug: bool,
 }
 
 impl Server {
@@ -60,6 +61,7 @@ impl Server {
         listenor: evdev::Device,
         interval: Duration,
         keybind: KeyCode,
+        debug: bool,
     ) -> Result<Self, Box<dyn Error>> {
         let clicker = uinput::default()?
             .name("device")?
@@ -71,6 +73,7 @@ impl Server {
             clicker,
             hotkey,
             interval,
+            debug,
         })
     }
 
@@ -80,7 +83,7 @@ impl Server {
         loop {
             let active = self.hotkey.is_active();
 
-            if active {
+            if active && !self.debug {
                 let _ = self.click();
             }
 

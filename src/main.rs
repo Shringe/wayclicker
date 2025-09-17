@@ -15,8 +15,8 @@ fn main() {
             let listenor = Device::open(device).unwrap();
             let interval = Duration::from_millis(interval);
             let hotkey = KeyCode::KEY_F5;
-            let mut server =
-                Server::new(listenor, interval, hotkey).expect("Failed to get create server");
+            let mut server = Server::new(listenor, interval, hotkey, args.debug)
+                .expect("Failed to get create server");
             server.run();
         }
 
