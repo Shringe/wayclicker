@@ -1,4 +1,5 @@
 mod cli;
+mod gui;
 mod server;
 
 use std::time::Duration;
@@ -23,7 +24,9 @@ fn main() {
             server.run();
         }
 
-        cli::Mode::Client => todo!(),
+        cli::Mode::Client => {
+            gui::main();
+        }
 
         cli::Mode::List => {
             for (path, device) in evdev::enumerate() {
