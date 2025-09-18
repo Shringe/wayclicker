@@ -1,5 +1,7 @@
+use std::cell::RefCell;
 use std::env;
-use std::process::Command;
+use std::process::{Command, Output};
+use std::rc::Rc;
 
 use gtk::prelude::*;
 use gtk::{
@@ -12,14 +14,27 @@ const APP_ID: &str = "com.github.wayclicker";
 
 pub fn main() {
     let app = Application::builder().application_id(APP_ID).build();
-    app.connect_activate(build_ui);
+    let client = Rc::new(RefCell::new(Client::default()));
+    app.connect_activate(move |app| build_ui(app, client.clone()));
 
     // otherwise this will error because of the cli
     let no_args: [&str; 0] = [];
     app.run_with_args(&no_args);
 }
 
-fn build_ui(app: &Application) {
+struct Client {
+    inputs_text: String,
+}
+
+impl Default for Client {
+    fn default() -> Self {
+        Self {
+            inputs_text: String::new(),
+        }
+    }
+}
+
+fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
     // Main window
     let window = ApplicationWindow::builder()
         .application(app)
@@ -108,6 +123,7 @@ fn build_ui(app: &Application) {
         .build();
 
     let text_view = TextView::new();
+    let text_buffer = text_view.buffer();
     text_view.set_editable(false);
     text_view.set_monospace(true);
 
@@ -142,8 +158,23 @@ fn build_ui(app: &Application) {
         println!("Stop button clicked");
     });
 
-    list_devices_button.connect_clicked(|_| {
+    list_devices_button.connect_clicked(move |_| {
         println!("List devices button clicked");
+        let binding = client.clone();
+        let mut client = binding.borrow_mut();
+
+        let current_bin = env::current_exe().expect("Failed to get current executable path");
+        let args_vec = vec!["list".to_string()];
+        let result = Command::new("pkexec")
+            .arg(current_bin)
+            .args(&args_vec)
+            .env("SHELL", "/bin/sh")
+            .output()
+            .expect("Couldn't list devices");
+
+        let device_list =
+            String::from_utf8(result.stdout).expect("Couldn't parse device list stdout");
+        text_buffer.set_text(&device_list);
     });
 
     window.present();
