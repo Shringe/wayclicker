@@ -87,7 +87,7 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
     let device_names: Vec<String> = client_for_main.device_map.keys().cloned().collect();
     let names_str: Vec<&str> = device_names.iter().map(|s| s.as_str()).collect();
     let string_list = StringList::new(&names_str);
-    let device_menu = DropDown::new(Some(string_list), None::<gtk4::Expression>);
+    let device_menu = DropDown::new(Some(string_list), None::<gtk::Expression>);
     // device_menu.set_placeholder_text(Some("/dev/input/event0"));
 
     device_box.append(&device_label);
@@ -156,7 +156,7 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
             .selected_item()
             .expect("Couldn't get dropdown entry");
         let device_object = device_item
-            .downcast::<gtk4::StringObject>()
+            .downcast::<gtk::StringObject>()
             .expect("Couldn't get dropdown object");
         let device_name = device_object.string().to_string();
         let device_path = client
