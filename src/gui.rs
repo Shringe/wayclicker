@@ -1,3 +1,6 @@
+use std::env;
+use std::process::Command;
+
 use gtk::prelude::*;
 use gtk::{
     Application, ApplicationWindow, Box, Button, Entry, Label, Orientation, ScrolledWindow,
@@ -115,8 +118,24 @@ fn build_ui(app: &Application) {
     window.set_child(Some(&main_box));
 
     // Basic event handlers (placeholders)
-    start_button.connect_clicked(|_| {
+    start_button.connect_clicked(move |_| {
         println!("Start button clicked");
+        let current_bin = env::current_exe().expect("Failed to get current executable path");
+        let args_vec = vec![
+            "server".to_string(),
+            "--device".to_string(),
+            device_entry.text().to_string(),
+            "--interval".to_string(),
+            interval_entry.text().to_string(),
+            "--keybind".to_string(),
+            keybind_entry.text().to_string(),
+        ];
+
+        let _cmd = Command::new("pkexec")
+            .arg(current_bin)
+            .args(&args_vec)
+            .env("SHELL", "/bin/sh")
+            .spawn();
     });
 
     stop_button.connect_clicked(|_| {
