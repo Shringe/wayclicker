@@ -15,11 +15,12 @@ fn main() {
         cli::Mode::Server {
             device,
             interval,
+            modifiers,
             keybind,
         } => {
             let listenor = Device::open(device).unwrap();
             let interval = Duration::from_millis(interval);
-            let mut server = Server::new(listenor, interval, keybind, args.debug)
+            let mut server = Server::new(listenor, interval, modifiers, keybind, args.debug)
                 .expect("Failed to get create server");
             server.run();
         }

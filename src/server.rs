@@ -8,15 +8,17 @@ use evdev::KeyCode;
 
 struct HotKey {
     listenor: evdev::Device,
+    modifiers: Vec<KeyCode>,
     keybind: KeyCode,
     lastkeys: Vec<KeyCode>,
     active: bool,
 }
 
 impl HotKey {
-    fn new(listenor: evdev::Device, keybind: KeyCode) -> Self {
+    fn new(listenor: evdev::Device, modifiers: Vec<KeyCode>, keybind: KeyCode) -> Self {
         Self {
             listenor,
+            modifiers,
             keybind,
             lastkeys: Vec::new(),
             active: false,
@@ -60,6 +62,7 @@ impl Server {
     pub fn new(
         listenor: evdev::Device,
         interval: Duration,
+        modifiers: Vec<KeyCode>,
         keybind: KeyCode,
         debug: bool,
     ) -> Result<Self, Box<dyn Error>> {
@@ -68,7 +71,7 @@ impl Server {
             .event(Mouse::Left)?
             .create()?;
 
-        let hotkey = HotKey::new(listenor, keybind);
+        let hotkey = HotKey::new(listenor, modifiers, keybind);
         Ok(Self {
             clicker,
             hotkey,
