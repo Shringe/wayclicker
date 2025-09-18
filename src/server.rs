@@ -33,6 +33,14 @@ impl HotKey {
             .iter()
             .collect::<Vec<KeyCode>>();
 
+        // Make sure all modifiers are pressed
+        for m in &self.modifiers {
+            if !keypresses.contains(m) {
+                self.lastkeys = keypresses;
+                return self.active;
+            }
+        }
+
         // Check for specific key presses
         for k in &keypresses {
             if *k == self.keybind && !self.lastkeys.contains(k) {
