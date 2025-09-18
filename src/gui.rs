@@ -9,7 +9,7 @@ use gtk::{
     Application, ApplicationWindow, Box, Button, Entry, Label, Orientation, ScrolledWindow,
     Separator, TextView,
 };
-use gtk4::{self as gtk, DropDown, StringList};
+use gtk4::{self as gtk, DropDown, StringList, gdk};
 
 const APP_ID: &str = "com.github.wayclicker";
 
@@ -29,6 +29,7 @@ struct Client {
     server_process: Option<Child>,
     /// Maps device names to paths
     device_map: HashMap<String, String>,
+    capture_keybind: bool,
 }
 
 fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
@@ -108,11 +109,13 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
     // Keybind
     let keybind_box = Box::new(Orientation::Horizontal, 10);
     let keybind_label = Label::new(Some("Keybind:"));
+    let key_controller = gtk::EventControllerKey::new();
+    let keybind_entry_capture_label = "Click to set hotkey...";
+    let keybind_entry = Button::with_label(keybind_entry_capture_label);
     keybind_label.set_size_request(120, -1);
     keybind_label.set_halign(gtk::Align::Start);
-    let keybind_entry = Entry::new();
-    keybind_entry.set_text("KEY_F8");
-    keybind_entry.set_placeholder_text(Some("KEY_F8"));
+    keybind_entry.set_focus_on_click(true);
+    keybind_entry.add_controller(key_controller.clone());
     keybind_box.append(&keybind_label);
     keybind_box.append(&keybind_entry);
     main_box.append(&keybind_box);
@@ -144,12 +147,14 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
     let device_menu_for_start = device_menu.clone();
     let start_for_start = start_button.clone();
     let stop_for_start = stop_button.clone();
+    let keybind_entry_for_start = keybind_entry.clone();
     start_button.connect_clicked(move |_| {
         println!("Start button clicked");
         let mut client = client_for_start.borrow_mut();
         let device_menu = &device_menu_for_start;
         let start = &start_for_start;
         let stop = &stop_for_start;
+        let keybind_entry = &keybind_entry_for_start;
 
         let current_bin = env::current_exe().expect("Failed to get current executable path");
         let device_item = device_menu
@@ -163,6 +168,8 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
             .device_map
             .get(&device_name)
             .expect("Couldn't find device path");
+
+        let keybind_label = keybind_entry.label().expect("Couldn't get keybind label");
         let args_vec = vec![
             "server".to_string(),
             "--device".to_string(),
@@ -170,7 +177,7 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
             "--interval".to_string(),
             interval_entry.text().to_string(),
             "--keybind".to_string(),
-            keybind_entry.text().to_string(),
+            keybind_label.to_string(),
         ];
 
         let result = Command::new("pkexec")
@@ -240,16 +247,53 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
             }
         }
 
-        println!("{:#?}", device_map);
         client.device_map = device_map;
 
         let device_names: Vec<String> = client.device_map.keys().cloned().collect();
         let names_str: Vec<&str> = device_names.iter().map(|s| s.as_str()).collect();
         let string_list = StringList::new(&names_str);
 
-        // Update the dropdown's model
         device_menu.set_model(Some(&string_list));
     });
 
+    let client_for_keybind = client.clone();
+    let keybind_entry_for_keybind = keybind_entry.clone();
+    keybind_entry.connect_clicked(move |_| {
+        println!("Keybind button clicked");
+        let mut client = client_for_keybind.borrow_mut();
+        let keybind_entry = &keybind_entry_for_keybind;
+
+        if !client.capture_keybind {
+            client.capture_keybind = true;
+            keybind_entry.set_label(keybind_entry_capture_label);
+        }
+    });
+
+    let client_for_controller = client.clone();
+    let keybind_entry_for_controller = keybind_entry.clone();
+    key_controller.connect_key_pressed(move |controller, keyval, _keycode, _modifiers| {
+        let mut client = client_for_controller.borrow_mut();
+        let keybind_entry = &keybind_entry_for_controller;
+        if !client.capture_keybind {
+            return gtk::glib::Propagation::Proceed;
+        }
+
+        if let Some(widget) = controller.widget() {
+            if widget == keybind_entry.clone().upcast::<gtk::Widget>() {
+                if let Some(hotkey) = gtk_to_evdev_keyname(&keyval) {
+                    keybind_entry.set_label(hotkey.as_str());
+                    client.capture_keybind = false;
+                    return gtk::glib::Propagation::Stop;
+                }
+            }
+        }
+        gtk::glib::Propagation::Proceed
+    });
+
     window.present();
+}
+
+fn gtk_to_evdev_keyname(keyval: &gdk::Key) -> Option<String> {
+    let name = "key_".to_string() + keyval.name()?.as_str();
+    Some(name.to_uppercase())
 }
