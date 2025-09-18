@@ -23,6 +23,7 @@ pub fn main() {
     app.run_with_args(&no_args);
 }
 
+/// Stores the state of the GUI
 #[derive(Default)]
 struct Client {
     server_process: Option<Child>,
