@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::env;
-use std::process::{Command, Output};
+use std::process::{Child, Command};
 use std::rc::Rc;
 
 use gtk::prelude::*;
@@ -22,16 +22,9 @@ pub fn main() {
     app.run_with_args(&no_args);
 }
 
+#[derive(Default)]
 struct Client {
-    inputs_text: String,
-}
-
-impl Default for Client {
-    fn default() -> Self {
-        Self {
-            inputs_text: String::new(),
-        }
-    }
+    server_process: Option<Child>,
 }
 
 fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
@@ -47,6 +40,8 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
 
     // Reusable
     let separator = Separator::new(Orientation::Horizontal);
+    let binding = client.clone();
+    let client_for_main = binding.borrow();
 
     // Main container
     let main_box = Box::new(Orientation::Vertical, 10);
@@ -60,12 +55,14 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
     control_box.set_margin_top(10);
     control_box.set_margin_bottom(10);
 
+    let is_server_running = client_for_main.server_process.is_some();
     let start_button = Button::with_label("Start Server");
     start_button.add_css_class("suggested-action");
+    start_button.set_sensitive(!is_server_running);
 
     let stop_button = Button::with_label("Stop Server");
     stop_button.add_css_class("destructive-action");
-    stop_button.set_sensitive(false);
+    stop_button.set_sensitive(is_server_running);
 
     control_box.append(&start_button);
     control_box.append(&stop_button);
@@ -133,7 +130,10 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
 
     window.set_child(Some(&main_box));
 
-    // Basic event handlers (placeholders)
+    // Event handlers
+    let client_for_start = client.clone();
+    let start_for_start = start_button.clone();
+    let stop_for_start = stop_button.clone();
     start_button.connect_clicked(move |_| {
         println!("Start button clicked");
         let current_bin = env::current_exe().expect("Failed to get current executable path");
@@ -147,22 +147,40 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
             keybind_entry.text().to_string(),
         ];
 
-        let _cmd = Command::new("pkexec")
+        let result = Command::new("pkexec")
             .arg(current_bin)
             .args(&args_vec)
             .env("SHELL", "/bin/sh")
             .spawn();
+
+        if let Ok(child) = result {
+            let mut client = client_for_start.borrow_mut();
+            client.server_process = Some(child);
+            start_for_start.set_sensitive(false);
+            stop_for_start.set_sensitive(true);
+        }
     });
 
-    stop_button.connect_clicked(|_| {
+    let client_for_stop = client.clone();
+    let start_for_stop = start_button.clone();
+    let stop_for_stop = stop_button.clone();
+    stop_button.connect_clicked(move |_| {
         println!("Stop button clicked");
+        let mut client = client_for_stop.borrow_mut();
+        if let Some(child) = client.server_process.take() {
+            let _result = Command::new("pkexec")
+                .arg("kill")
+                .arg(child.id().to_string())
+                .env("SHELL", "/bin/sh")
+                .spawn();
+
+            start_for_stop.set_sensitive(true);
+            stop_for_stop.set_sensitive(false);
+        }
     });
 
     list_devices_button.connect_clicked(move |_| {
         println!("List devices button clicked");
-        let binding = client.clone();
-        let mut client = binding.borrow_mut();
-
         let current_bin = env::current_exe().expect("Failed to get current executable path");
         let args_vec = vec!["list".to_string()];
         let result = Command::new("pkexec")
