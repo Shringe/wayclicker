@@ -26,6 +26,10 @@ pub enum Mode {
         #[arg(long, default_value_t = 50)]
         interval: u64,
 
+        /// Modifiers for the keybind. Can be empty
+        #[arg(long)]
+        modifiers: Vec<KeyCode>,
+
         /// Keybind to toggle the hotkey. Should be prefixed with KEY_
         #[arg(long, value_name = "KEY_F8")]
         keybind: KeyCode,
