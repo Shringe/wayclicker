@@ -292,7 +292,8 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
                     println!("{:#?}", modifiers);
                     let mut label = String::new();
                     for m in modifiers.iter_names() {
-                        label.push_str((m.0.to_string() + "+").as_str());
+                        let name = gtk_modifier_name_to_evdev(m.0).expect("Invalid modifier name");
+                        label.push_str((name.to_string() + "+").as_str());
                     }
 
                     label.push_str(hotkey.as_str());
@@ -309,9 +310,35 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
     window.present();
 }
 
+/// Translates gdk keyvalues to evdev keynames as best as possible
 fn gtk_to_evdev_keyname(keyval: &gdk::Key) -> Option<String> {
-    let name = "key_".to_string() + keyval.name()?.as_str();
-    Some(name.to_uppercase())
+    match *keyval {
+        gdk::Key::Control_L => Some("KEY_LEFTCTRL".to_string()),
+        gdk::Key::Control_R => Some("KEY_RIGHTCTRL".to_string()),
+        gdk::Key::Shift_L => Some("KEY_LEFTSHIFT".to_string()),
+        gdk::Key::Shift_R => Some("KEY_RIGHTSHIFT".to_string()),
+        gdk::Key::Super_L => Some("KEY_LEFTMETA".to_string()),
+        gdk::Key::Super_R => Some("KEY_RIGHTMETA".to_string()),
+        gdk::Key::Alt_L => Some("KEY_LEFTALT".to_string()),
+        gdk::Key::Alt_R => Some("KEY_RIGHTALT".to_string()),
+        _ => {
+            let name = "key_".to_string() + keyval.name()?.as_str();
+            Some(name.to_uppercase())
+        }
+    }
+}
+
+/// Maps gtk modifier names to evdev names.
+/// Since gtk modifier names do not distuinguish between left/right modifiers,
+/// this function will return "both" modifiers which are not real evdev keys.
+fn gtk_modifier_name_to_evdev(modifier: &str) -> Option<&str> {
+    match modifier {
+        "ALT_MASK" => Some("KEY_BOTHALT"),
+        "SUPER_MASK" => Some("KEY_BOTHLEFTMETA"),
+        "SHIFT_MASK" => Some("KEY_BOTHSHIFT"),
+        "CONTROL_MASK" => Some("KEY_BOTHCTRL"),
+        _ => None,
+    }
 }
 
 fn gtk_key_is_modifier(keyval: &gdk::Key) -> bool {
