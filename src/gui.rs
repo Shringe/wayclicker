@@ -151,64 +151,16 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
     start_button.connect_clicked(move |_| {
         println!("Start button clicked");
         let mut client = client_for_start.borrow_mut();
-        let device_menu = &device_menu_for_start;
-        let start = &start_for_start;
-        let stop = &stop_for_start;
-        let keybind_entry = &keybind_entry_for_start;
-
-        let current_bin = env::current_exe().expect("Failed to get current executable path");
-        let device_item = device_menu
-            .selected_item()
-            .expect("Couldn't get dropdown entry");
-        let device_object = device_item
-            .downcast::<gtk::StringObject>()
-            .expect("Couldn't get dropdown object");
-        let device_name = device_object.string().to_string();
-        let device_path = client
-            .device_map
-            .get(&device_name)
-            .expect("Couldn't find device path");
-
-        let mut args_vec = vec![
-            "server".to_string(),
-            "--device".to_string(),
-            device_path.to_string(),
-            "--interval".to_string(),
-            interval_entry.text().to_string(),
-        ];
-
-        let keybind_label = keybind_entry.label().expect("Couldn't get keybind label");
-        let mut keybind_parts = keybind_label.split('+').rev();
-        let key = keybind_parts.next().expect("No keybind found");
-        args_vec.push("--keybind".to_string());
-        args_vec.push(key.to_string());
-        args_vec.push("--modifiers".to_string());
-        let modifiers: Vec<String> = keybind_parts
-            .into_iter()
-            .filter_map(|part| {
-                let formatted_part = if let Some(p) = gtk_modifier_from_pretty(part) {
-                    p
-                } else {
-                    part
-                };
-
-                gtk_modifier_name_to_evdev(formatted_part)
-            })
-            .map(|s| s.to_string())
-            .collect();
-        args_vec.push(modifiers.join("+"));
-
-        let result = Command::new("pkexec")
-            .arg(current_bin)
-            .args(&args_vec)
-            .env("SHELL", "/bin/sh")
-            .spawn();
-
-        if let Ok(child) = result {
-            client.server_process = Some(child);
-            start.set_sensitive(false);
-            stop.set_sensitive(true);
-        }
+        if let Err(e) = start_server(
+            &mut client,
+            &device_menu_for_start,
+            &start_for_start,
+            &stop_for_start,
+            &keybind_entry_for_start,
+            &interval_entry,
+        ) {
+            eprintln!("Failed to start server: {}", e);
+        };
     });
 
     let client_for_stop = client.clone();
@@ -386,4 +338,73 @@ fn gtk_key_is_modifier(keyval: &gdk::Key) -> bool {
         | gdk::Key::Alt_R => true,
         _ => false,
     }
+}
+
+fn start_server(
+    client: &mut Client,
+    device_menu: &gtk::DropDown,
+    start: &gtk::Button,
+    stop: &gtk::Button,
+    keybind_entry: &gtk::Button,
+    interval_entry: &gtk::Entry,
+) -> anyhow::Result<()> {
+    let current_bin = env::current_exe()?;
+
+    let device_item = device_menu
+        .selected_item()
+        .ok_or_else(|| anyhow::anyhow!("Couldn't get dropdown entry"))?;
+    let device_object = device_item
+        .downcast::<gtk::StringObject>()
+        .map_err(|_| anyhow::anyhow!("Couldn't get dropdown object"))?;
+    let device_name = device_object.string().to_string();
+    let device_path = client
+        .device_map
+        .get(&device_name)
+        .ok_or_else(|| anyhow::anyhow!("Couldn't find device path"))?;
+
+    let mut args_vec = vec![
+        "server".to_string(),
+        "--device".to_string(),
+        device_path.to_string(),
+        "--interval".to_string(),
+        interval_entry.text().to_string(),
+    ];
+
+    let keybind_label = keybind_entry
+        .label()
+        .ok_or_else(|| anyhow::anyhow!("Couldn't get keybind label"))?;
+    let mut keybind_parts = keybind_label.split('+').rev();
+    let key = keybind_parts
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("No keybind found"))?;
+
+    args_vec.push("--keybind".to_string());
+    args_vec.push(key.to_string());
+    args_vec.push("--modifiers".to_string());
+
+    let modifiers: Vec<String> = keybind_parts
+        .into_iter()
+        .filter_map(|part| {
+            let formatted_part = if let Some(p) = gtk_modifier_from_pretty(part) {
+                p
+            } else {
+                part
+            };
+            gtk_modifier_name_to_evdev(formatted_part)
+        })
+        .map(|s| s.to_string())
+        .collect();
+    args_vec.push(modifiers.join("+"));
+
+    let child = Command::new("pkexec")
+        .arg(current_bin)
+        .args(&args_vec)
+        .env("SHELL", "/bin/sh")
+        .spawn()?;
+
+    client.server_process = Some(child);
+    start.set_sensitive(false);
+    stop.set_sensitive(true);
+
+    Ok(())
 }
