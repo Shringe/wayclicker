@@ -185,7 +185,15 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
         args_vec.push("--modifiers".to_string());
         let modifiers: Vec<String> = keybind_parts
             .into_iter()
-            .filter_map(|part| gtk_modifier_name_to_evdev(part))
+            .filter_map(|part| {
+                let formatted_part = if let Some(p) = gtk_modifier_from_pretty(part) {
+                    p
+                } else {
+                    part
+                };
+
+                gtk_modifier_name_to_evdev(formatted_part)
+            })
             .map(|s| s.to_string())
             .collect();
         args_vec.push(modifiers.join("+"));
@@ -294,8 +302,12 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
                     println!("{:#?}", modifiers);
                     let mut label = String::new();
                     for m in modifiers.iter_names() {
-                        // let name = gtk_modifier_name_to_evdev(m.0).expect("Invalid modifier name");
-                        let name = m.0;
+                        let name = if let Some(p) = gtk_modifier_to_pretty(m.0) {
+                            p
+                        } else {
+                            m.0
+                        };
+
                         label.push_str((name.to_string() + "+").as_str());
                     }
 
@@ -338,6 +350,26 @@ fn gtk_modifier_name_to_evdev(modifier: &str) -> Option<&str> {
         "SUPER_MASK" => Some("KEY_LEFTMETA-KEY_RIGHTMETA"),
         "SHIFT_MASK" => Some("KEY_LEFTSHIFT-KEY_RIGHTSHIFT"),
         "CONTROL_MASK" => Some("KEY_LEFTCTRL-KEY_RIGHTCTRL"),
+        _ => None,
+    }
+}
+
+fn gtk_modifier_to_pretty(modifier: &str) -> Option<&str> {
+    match modifier {
+        "ALT_MASK" => Some("Alt"),
+        "SUPER_MASK" => Some("Super"),
+        "SHIFT_MASK" => Some("Shift"),
+        "CONTROL_MASK" => Some("Control"),
+        _ => None,
+    }
+}
+
+fn gtk_modifier_from_pretty(modifier: &str) -> Option<&str> {
+    match modifier {
+        "Alt" => Some("ALT_MASK"),
+        "Super" => Some("SUPER_MASK"),
+        "Shift" => Some("SHIFT_MASK"),
+        "Control" => Some("CONTROL_MASK"),
         _ => None,
     }
 }
