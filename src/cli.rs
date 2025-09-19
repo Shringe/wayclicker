@@ -26,9 +26,14 @@ pub enum Mode {
         #[arg(long, default_value_t = 50)]
         interval: u64,
 
-        /// Modifiers for the keybind. Can be empty
-        #[arg(long)]
-        modifiers: Vec<KeyCode>,
+        /// Modifiers for the keybind. Can be empty. Use - to define optional alternatives to the
+        /// modifier, like to allow both left/right control instead of just one. Use + to add
+        /// modifiers, incase you want both shift+ctrl for example.
+        #[arg(
+            long,
+            value_name = "KEY_RIGHTCTRL-KEY_LEFTCTRL+KEY_RIGHTSHIFT-KEY_LEFTSHIFT"
+        )]
+        modifiers: String,
 
         /// Keybind to toggle the hotkey. Should be prefixed with KEY_
         #[arg(long, value_name = "KEY_F8")]

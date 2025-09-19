@@ -1,4 +1,4 @@
-use std::{error::Error, thread, time::Duration};
+use std::{error::Error, str::FromStr, thread, time::Duration};
 
 // Uinput is used for send the inputs
 use uinput::event::controller::Mouse;
@@ -8,14 +8,14 @@ use evdev::KeyCode;
 
 struct HotKey {
     listenor: evdev::Device,
-    modifiers: Vec<KeyCode>,
+    modifiers: String,
     keybind: KeyCode,
     lastkeys: Vec<KeyCode>,
     active: bool,
 }
 
 impl HotKey {
-    fn new(listenor: evdev::Device, modifiers: Vec<KeyCode>, keybind: KeyCode) -> Self {
+    fn new(listenor: evdev::Device, modifiers: String, keybind: KeyCode) -> Self {
         Self {
             listenor,
             modifiers,
@@ -34,10 +34,30 @@ impl HotKey {
             .collect::<Vec<KeyCode>>();
 
         // Make sure all modifiers are pressed
-        for m in &self.modifiers {
-            if !keypresses.contains(m) {
-                self.lastkeys = keypresses;
-                return self.active;
+        for m in self.modifiers.split('+') {
+            if m.contains('-') {
+                // Must contain ONE of these split modifiers
+                let either_mods = m.split('-');
+                let mut atleast_one_pressed = false;
+                for either in either_mods {
+                    let key = evdev::KeyCode::from_str(either).unwrap();
+                    if keypresses.contains(&key) {
+                        atleast_one_pressed = true;
+                        break;
+                    }
+                }
+
+                if !atleast_one_pressed {
+                    self.lastkeys = keypresses;
+                    return self.active;
+                }
+            } else {
+                // Must contain this single modifier
+                let key = evdev::KeyCode::from_str(m).unwrap();
+                if !keypresses.contains(&key) {
+                    self.lastkeys = keypresses;
+                    return self.active;
+                }
             }
         }
 
@@ -70,7 +90,7 @@ impl Server {
     pub fn new(
         listenor: evdev::Device,
         interval: Duration,
-        modifiers: Vec<KeyCode>,
+        modifiers: String,
         keybind: KeyCode,
         debug: bool,
     ) -> Result<Self, Box<dyn Error>> {
