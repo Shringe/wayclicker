@@ -169,16 +169,24 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
             .get(&device_name)
             .expect("Couldn't find device path");
 
-        let keybind_label = keybind_entry.label().expect("Couldn't get keybind label");
-        let args_vec = vec![
+        let mut args_vec = vec![
             "server".to_string(),
             "--device".to_string(),
             device_path.to_string(),
             "--interval".to_string(),
             interval_entry.text().to_string(),
-            "--keybind".to_string(),
-            keybind_label.to_string(),
         ];
+
+        let keybind_label = keybind_entry.label().expect("Couldn't get keybind label");
+        let mut keybind_parts = keybind_label.split('+').rev();
+        let key = keybind_parts.next().expect("No keybind found");
+        args_vec.push("--keybind".to_string());
+        args_vec.push(key.to_string());
+
+        for k in keybind_parts {
+            args_vec.push("--modifiers".to_string());
+            args_vec.push(k.to_string());
+        }
 
         let result = Command::new("pkexec")
             .arg(current_bin)
