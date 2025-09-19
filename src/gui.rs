@@ -271,17 +271,25 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
 
     let client_for_controller = client.clone();
     let keybind_entry_for_controller = keybind_entry.clone();
-    key_controller.connect_key_pressed(move |controller, keyval, _keycode, _modifiers| {
+    key_controller.connect_key_pressed(move |controller, keyval, _keycode, modifiers| {
         let mut client = client_for_controller.borrow_mut();
         let keybind_entry = &keybind_entry_for_controller;
-        if !client.capture_keybind {
+        if !client.capture_keybind || gtk_key_is_modifier(&keyval) {
             return gtk::glib::Propagation::Proceed;
         }
 
         if let Some(widget) = controller.widget() {
             if widget == keybind_entry.clone().upcast::<gtk::Widget>() {
                 if let Some(hotkey) = gtk_to_evdev_keyname(&keyval) {
-                    keybind_entry.set_label(hotkey.as_str());
+                    println!("{:#?}", modifiers);
+                    let mut label = String::new();
+                    for m in modifiers.iter_names() {
+                        label.push_str((m.0.to_string() + "+").as_str());
+                    }
+
+                    label.push_str(hotkey.as_str());
+                    keybind_entry.set_label(label.as_str());
+
                     client.capture_keybind = false;
                     return gtk::glib::Propagation::Stop;
                 }
@@ -296,4 +304,18 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
 fn gtk_to_evdev_keyname(keyval: &gdk::Key) -> Option<String> {
     let name = "key_".to_string() + keyval.name()?.as_str();
     Some(name.to_uppercase())
+}
+
+fn gtk_key_is_modifier(keyval: &gdk::Key) -> bool {
+    match *keyval {
+        gdk::Key::Control_L
+        | gdk::Key::Control_R
+        | gdk::Key::Shift_L
+        | gdk::Key::Shift_R
+        | gdk::Key::Super_L
+        | gdk::Key::Super_R
+        | gdk::Key::Alt_L
+        | gdk::Key::Alt_R => true,
+        _ => false,
+    }
 }
