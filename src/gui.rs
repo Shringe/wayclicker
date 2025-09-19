@@ -182,11 +182,13 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
         let key = keybind_parts.next().expect("No keybind found");
         args_vec.push("--keybind".to_string());
         args_vec.push(key.to_string());
-
-        for k in keybind_parts {
-            args_vec.push("--modifiers".to_string());
-            args_vec.push(k.to_string());
-        }
+        args_vec.push("--modifiers".to_string());
+        let modifiers: Vec<String> = keybind_parts
+            .into_iter()
+            .filter_map(|part| gtk_modifier_name_to_evdev(part))
+            .map(|s| s.to_string())
+            .collect();
+        args_vec.push(modifiers.join("+"));
 
         let result = Command::new("pkexec")
             .arg(current_bin)
@@ -292,7 +294,8 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
                     println!("{:#?}", modifiers);
                     let mut label = String::new();
                     for m in modifiers.iter_names() {
-                        let name = gtk_modifier_name_to_evdev(m.0).expect("Invalid modifier name");
+                        // let name = gtk_modifier_name_to_evdev(m.0).expect("Invalid modifier name");
+                        let name = m.0;
                         label.push_str((name.to_string() + "+").as_str());
                     }
 
@@ -328,15 +331,13 @@ fn gtk_to_evdev_keyname(keyval: &gdk::Key) -> Option<String> {
     }
 }
 
-/// Maps gtk modifier names to evdev names.
-/// Since gtk modifier names do not distuinguish between left/right modifiers,
-/// this function will return "both" modifiers which are not real evdev keys.
+/// Maps gtk modifier names to evdev names using the server's "-" syntax for left/right alternatives.
 fn gtk_modifier_name_to_evdev(modifier: &str) -> Option<&str> {
     match modifier {
-        "ALT_MASK" => Some("KEY_BOTHALT"),
-        "SUPER_MASK" => Some("KEY_BOTHLEFTMETA"),
-        "SHIFT_MASK" => Some("KEY_BOTHSHIFT"),
-        "CONTROL_MASK" => Some("KEY_BOTHCTRL"),
+        "ALT_MASK" => Some("KEY_LEFTALT-KEY_RIGHTALT"),
+        "SUPER_MASK" => Some("KEY_LEFTMETA-KEY_RIGHTMETA"),
+        "SHIFT_MASK" => Some("KEY_LEFTSHIFT-KEY_RIGHTSHIFT"),
+        "CONTROL_MASK" => Some("KEY_LEFTCTRL-KEY_RIGHTCTRL"),
         _ => None,
     }
 }
