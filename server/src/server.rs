@@ -1,4 +1,8 @@
+use std::sync::Arc;
 use std::{error::Error, time::Duration};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::UnixListener;
+use tokio::sync::RwLock;
 use tokio::time;
 
 // Uinput is used for send the inputs
@@ -14,7 +18,7 @@ pub struct Server {
     hotkey: HotKey,
     interval: Duration,
     /// Whether or not the daemon listens for hotkeys and clicks
-    enabled: bool,
+    enabled: Arc<RwLock<bool>>,
 }
 
 impl Server {
@@ -35,8 +39,76 @@ impl Server {
             clicker,
             hotkey,
             interval,
-            enabled: true,
+            enabled: Arc::new(RwLock::new(true)),
         })
+    }
+
+    /// Spawns a Unix socket listener to control the enabled state
+    pub async fn listen_control_socket(
+        &self,
+        socket_path: &'static str,
+    ) -> Result<(), Box<dyn Error>> {
+        // Remove old socket if it exists
+        let _ = std::fs::remove_file(socket_path);
+
+        let listener = UnixListener::bind(socket_path)?;
+        let enabled = self.enabled.clone();
+
+        tokio::spawn(async move {
+            log::info!("Control socket listening at {}", socket_path);
+
+            loop {
+                match listener.accept().await {
+                    Ok((mut stream, _)) => {
+                        let enabled = enabled.clone();
+                        tokio::spawn(async move {
+                            let mut buffer = [0u8; 1024];
+
+                            match stream.read(&mut buffer).await {
+                                Ok(n) if n > 0 => {
+                                    let command =
+                                        String::from_utf8_lossy(&buffer[..n]).trim().to_string();
+                                    log::debug!("Received command: {}", command);
+
+                                    let response = match command.as_str() {
+                                        "enable" => {
+                                            *enabled.write().await = true;
+                                            "Enabled\n"
+                                        }
+                                        "disable" => {
+                                            *enabled.write().await = false;
+                                            "Disabled\n"
+                                        }
+                                        "toggle" => {
+                                            let mut e = enabled.write().await;
+                                            *e = !*e;
+                                            if *e { "Enabled\n" } else { "Disabled\n" }
+                                        }
+                                        "status" => {
+                                            if *enabled.read().await {
+                                                "Enabled\n"
+                                            } else {
+                                                "Disabled\n"
+                                            }
+                                        }
+                                        _ => {
+                                            "Unknown command. Use: enable, disable, toggle, or status\n"
+                                        }
+                                    };
+
+                                    let _ = stream.write_all(response.as_bytes()).await;
+                                }
+                                Ok(_) => log::debug!("Empty read from socket"),
+                                Err(e) => log::error!("Failed to read from socket: {}", e),
+                            }
+                        });
+                    }
+                    Err(e) => log::error!("Failed to accept connection: {}", e),
+                }
+            }
+        });
+
+        Ok(())
     }
 
     /// Runs the server loop
@@ -47,7 +119,7 @@ impl Server {
         loop {
             interval.tick().await;
 
-            if self.enabled {
+            if *self.enabled.read().await {
                 let active = self
                     .hotkey
                     .is_active()
