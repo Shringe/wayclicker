@@ -83,10 +83,12 @@ pub struct Server {
     hotkey: HotKey,
     interval: Duration,
     debug: bool,
+    /// Whether or not the daemon listens for hotkeys and clicks
+    enabled: bool,
 }
 
 impl Server {
-    // Creates the server and clicker
+    /// Creates the server and clicker
     pub fn new(
         listenor: evdev::Device,
         interval: Duration,
@@ -105,6 +107,7 @@ impl Server {
             hotkey,
             interval,
             debug,
+            enabled: true,
         })
     }
 
@@ -112,18 +115,22 @@ impl Server {
     pub fn run(&mut self) {
         println!("Server ready");
         loop {
-            let active = self.hotkey.is_active();
+            if self.enabled {
+                let active = self.hotkey.is_active();
 
-            if active && !self.debug {
-                let _ = self.click();
+                if active && !self.debug {
+                    if let Err(e) = self.click() {
+                        eprintln!("Encountered an error while trying to click: {}", e);
+                    }
+                }
             }
 
             thread::sleep(self.interval);
         }
     }
 
-    // Sends a left click
-    pub fn click(&mut self) -> Result<(), Box<dyn Error>> {
+    /// Sends a left click
+    fn click(&mut self) -> Result<(), Box<dyn Error>> {
         self.clicker.send(Mouse::Left, 1)?;
         self.clicker.send(Mouse::Left, 0)?;
         self.clicker.synchronize()?;
