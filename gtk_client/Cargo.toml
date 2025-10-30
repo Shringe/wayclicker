@@ -2,6 +2,9 @@
 name = "gtk_client"
 version.workspace = true
 edition.workspace = true
+repository.workspace = true
+homepage.workspace = true
+license.workspace = true
 
 [dependencies]
 gtk4 = "0.10.1"
