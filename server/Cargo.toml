@@ -11,3 +11,4 @@ evdev.workspace = true
 uinput.workspace = true
 log.workspace = true
 env_logger.workspace = true
+clap = { version = "4.5.51", features = ["derive"] }
