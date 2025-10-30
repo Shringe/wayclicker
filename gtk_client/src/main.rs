@@ -14,6 +14,7 @@ use gtk4::{self as gtk, DropDown, StringList, gdk};
 const APP_ID: &str = "com.github.wayclicker";
 
 fn main() {
+    env_logger::init();
     let app = Application::builder().application_id(APP_ID).build();
     let client = Rc::new(RefCell::new(Client::default()));
     app.connect_activate(move |app| build_ui(app, client.clone()));
