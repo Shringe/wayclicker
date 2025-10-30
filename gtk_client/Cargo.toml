@@ -1,0 +1,13 @@
+[package]
+name = "gtk_client"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+gtk4 = "0.10.1"
+anyhow = "1.0.100"
+
+evdev.workspace = true
+uinput.workspace = true
+log.workspace = true
+env_logger.workspace = true

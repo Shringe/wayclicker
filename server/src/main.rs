@@ -6,6 +6,14 @@ use uinput::event::controller::Mouse;
 // Evdev is used for detecting keyboard input globally
 use evdev::KeyCode;
 
+fn main() {
+    let listenor = evdev::Device::open(device).unwrap();
+    let interval = Duration::from_millis(interval);
+    let mut server =
+        Server::new(listenor, interval, modifiers, keybind).expect("Failed to get create server");
+    server.run();
+}
+
 struct HotKey {
     listenor: evdev::Device,
     modifiers: String,

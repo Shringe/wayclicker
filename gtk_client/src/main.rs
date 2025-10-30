@@ -13,14 +13,11 @@ use gtk4::{self as gtk, DropDown, StringList, gdk};
 
 const APP_ID: &str = "com.github.wayclicker";
 
-pub fn main() {
+fn main() {
     let app = Application::builder().application_id(APP_ID).build();
     let client = Rc::new(RefCell::new(Client::default()));
     app.connect_activate(move |app| build_ui(app, client.clone()));
-
-    // otherwise this will error because of the cli
-    let no_args: [&str; 0] = [];
-    app.run_with_args(&no_args);
+    app.run();
 }
 
 /// Stores the state of the GUI
