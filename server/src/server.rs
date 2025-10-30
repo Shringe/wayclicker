@@ -43,7 +43,10 @@ impl Server {
         log::info!("Server ready");
         loop {
             if self.enabled {
-                let active = self.hotkey.is_active();
+                let active = self
+                    .hotkey
+                    .is_active()
+                    .expect("Failed to determine if the hotkey is active");
 
                 if active {
                     if let Err(e) = self.click() {
