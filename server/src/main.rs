@@ -6,7 +6,8 @@ use crate::server::Server;
 use clap::Parser;
 use std::time::Duration;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = cli::Args::parse();
 
     match args.mode {
@@ -22,7 +23,7 @@ fn main() {
             let interval = Duration::from_millis(interval);
             let mut server = Server::new(listenor, interval, modifiers, keybind)
                 .expect("Failed to create server");
-            server.run();
+            server.run().await;
         }
 
         cli::Mode::List => {
