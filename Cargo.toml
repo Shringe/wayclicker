@@ -10,6 +10,8 @@ homepage = "https://github.com/Shringe/wayclicker/"
 [dependencies]
 anyhow = "1.0.100"
 clap = { version = "4.5.47", features = ["derive"] }
+env_logger = "0.11.8"
 evdev = "0.13.1"
 gtk4 = "0.10.1"
+log = "0.4.28"
 uinput = "0.1.3"

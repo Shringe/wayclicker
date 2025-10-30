@@ -66,9 +66,9 @@ impl HotKey {
             if *k == self.keybind && !self.lastkeys.contains(k) {
                 self.active = !self.active;
                 if self.active {
-                    println!("Enabled clicker");
+                    log::info!("Enabled clicker");
                 } else {
-                    println!("Disabled clicker");
+                    log::info!("Disabled clicker");
                 }
             }
         }
@@ -113,14 +113,14 @@ impl Server {
 
     /// Runs the server loop
     pub fn run(&mut self) {
-        println!("Server ready");
+        log::info!("Server ready");
         loop {
             if self.enabled {
                 let active = self.hotkey.is_active();
 
                 if active && !self.debug {
                     if let Err(e) = self.click() {
-                        eprintln!("Encountered an error while trying to click: {}", e);
+                        log::error!("Encountered an error while trying to click: {}", e);
                     }
                 }
             }
@@ -131,6 +131,7 @@ impl Server {
 
     /// Sends a left click
     fn click(&mut self) -> Result<(), Box<dyn Error>> {
+        log::debug!("Sending a left click");
         self.clicker.send(Mouse::Left, 1)?;
         self.clicker.send(Mouse::Left, 0)?;
         self.clicker.synchronize()?;

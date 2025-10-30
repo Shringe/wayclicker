@@ -149,7 +149,7 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
     let stop_for_start = stop_button.clone();
     let keybind_entry_for_start = keybind_entry.clone();
     start_button.connect_clicked(move |_| {
-        println!("Start button clicked");
+        log::info!("Start button clicked");
         let mut client = client_for_start.borrow_mut();
         if let Err(e) = start_server(
             &mut client,
@@ -159,7 +159,7 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
             &keybind_entry_for_start,
             &interval_entry,
         ) {
-            eprintln!("Failed to start server: {}", e);
+            log::error!("Failed to start server: {}", e);
         };
     });
 
@@ -167,7 +167,7 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
     let start_for_stop = start_button.clone();
     let stop_for_stop = stop_button.clone();
     stop_button.connect_clicked(move |_| {
-        println!("Stop button clicked");
+        log::info!("Stop button clicked");
         let mut client = client_for_stop.borrow_mut();
         let start = &start_for_stop;
         let stop = &stop_for_stop;
@@ -186,7 +186,7 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
     let client_for_list = client.clone();
     let device_menu_for_list = device_menu.clone();
     list_devices_button.connect_clicked(move |_| {
-        println!("List devices button clicked");
+        log::info!("List devices button clicked");
         let mut client = client_for_list.borrow_mut();
         let device_menu = &device_menu_for_list;
 
@@ -217,6 +217,7 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
             }
         }
 
+        log::debug!("Device map updated: {:?}", device_map);
         client.device_map = device_map;
 
         let device_names: Vec<String> = client.device_map.keys().cloned().collect();
@@ -229,7 +230,7 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
     let client_for_keybind = client.clone();
     let keybind_entry_for_keybind = keybind_entry.clone();
     keybind_entry.connect_clicked(move |_| {
-        println!("Keybind button clicked");
+        log::info!("Keybind button clicked");
         let mut client = client_for_keybind.borrow_mut();
         let keybind_entry = &keybind_entry_for_keybind;
 
@@ -251,7 +252,7 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
         if let Some(widget) = controller.widget() {
             if widget == keybind_entry.clone().upcast::<gtk::Widget>() {
                 if let Some(hotkey) = gtk_to_evdev_keyname(&keyval) {
-                    println!("{:#?}", modifiers);
+                    log::debug!("Modifiers: {:#?}", modifiers);
                     let mut label = String::new();
                     for m in modifiers.iter_names() {
                         let name = if let Some(p) = gtk_modifier_to_pretty(m.0) {
@@ -264,6 +265,7 @@ fn build_ui(app: &Application, client: Rc<RefCell<Client>>) {
                     }
 
                     label.push_str(hotkey.as_str());
+                    log::debug!("Set keybind: {}", label);
                     keybind_entry.set_label(label.as_str());
 
                     client.capture_keybind = false;

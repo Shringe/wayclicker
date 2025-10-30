@@ -9,7 +9,10 @@ use clap::Parser;
 use evdev::Device;
 
 fn main() {
+    env_logger::init();
+
     let args = cli::Args::parse();
+    log::debug!("Cli args: {:?}", args);
 
     match args.mode {
         cli::Mode::Server {
