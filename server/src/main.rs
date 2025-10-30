@@ -2,13 +2,32 @@ mod cli;
 mod hotkey;
 mod server;
 
-use clap::Parser;
-
 use crate::server::Server;
+use clap::Parser;
+use std::time::Duration;
 
 fn main() {
-    env_logger::init();
     let args = cli::Args::parse();
-    let mut server = Server::new().expect("Failed to initialize server");
-    server.run();
+
+    match args.mode {
+        cli::Mode::Start {
+            device,
+            interval,
+            modifiers,
+            keybind,
+        } => {
+            env_logger::init();
+            let listenor = evdev::Device::open(device).unwrap();
+            let interval = Duration::from_millis(interval);
+            let mut server = Server::new(listenor, interval, modifiers, keybind)
+                .expect("Failed to create server");
+            server.run();
+        }
+
+        cli::Mode::List => {
+            for (path, device) in evdev::enumerate() {
+                println!("{:?}: {}", path, device.name().unwrap_or("<error>"));
+            }
+        }
+    }
 }
