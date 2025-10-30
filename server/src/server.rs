@@ -1,4 +1,5 @@
-use std::{error::Error, thread, time::Duration};
+use std::{error::Error, time::Duration};
+use tokio::time;
 
 // Uinput is used for send the inputs
 use uinput::event::controller::Mouse;
@@ -39,9 +40,13 @@ impl Server {
     }
 
     /// Runs the server loop
-    pub fn run(&mut self) {
+    pub async fn run(&mut self) {
         log::info!("Server ready");
+        let mut interval = time::interval(self.interval);
+
         loop {
+            interval.tick().await;
+
             if self.enabled {
                 let active = self
                     .hotkey
@@ -54,8 +59,6 @@ impl Server {
                     }
                 }
             }
-
-            thread::sleep(self.interval);
         }
     }
 
