@@ -23,6 +23,12 @@ async fn main() {
             let interval = Duration::from_millis(interval);
             let mut server = Server::new(listenor, interval, modifiers, keybind)
                 .expect("Failed to create server");
+
+            server
+                .listen_control_socket("/tmp/wayclicker.sock")
+                .await
+                .expect("Failed to start control socket");
+
             server.run().await;
         }
 
