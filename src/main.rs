@@ -23,7 +23,7 @@ fn main() {
         } => {
             let listenor = Device::open(device).unwrap();
             let interval = Duration::from_millis(interval);
-            let mut server = Server::new(listenor, interval, modifiers, keybind, args.debug)
+            let mut server = Server::new(listenor, interval, modifiers, keybind)
                 .expect("Failed to get create server");
             server.run();
         }

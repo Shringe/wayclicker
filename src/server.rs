@@ -82,7 +82,6 @@ pub struct Server {
     clicker: uinput::device::Device,
     hotkey: HotKey,
     interval: Duration,
-    debug: bool,
     /// Whether or not the daemon listens for hotkeys and clicks
     enabled: bool,
 }
@@ -94,7 +93,6 @@ impl Server {
         interval: Duration,
         modifiers: String,
         keybind: KeyCode,
-        debug: bool,
     ) -> Result<Self, Box<dyn Error>> {
         let clicker = uinput::default()?
             .name("device")?
@@ -106,7 +104,6 @@ impl Server {
             clicker,
             hotkey,
             interval,
-            debug,
             enabled: true,
         })
     }
@@ -118,7 +115,7 @@ impl Server {
             if self.enabled {
                 let active = self.hotkey.is_active();
 
-                if active && !self.debug {
+                if active {
                     if let Err(e) = self.click() {
                         log::error!("Encountered an error while trying to click: {}", e);
                     }
