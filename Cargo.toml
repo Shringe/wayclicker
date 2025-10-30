@@ -16,6 +16,8 @@ resolver = "2"
 
 [workspace.dependencies]
 env_logger = "0.11.8"
-evdev = "0.13.1"
 log = "0.4.28"
+# Evdev is used for detecting keyboard input globally (hotkey)
+evdev = "0.13.1"
+# Uinput is used for sending click input
 uinput = "0.1.3"
