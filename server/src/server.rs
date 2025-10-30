@@ -16,38 +16,24 @@ pub struct Server {
     enabled: bool,
 }
 
-// impl Default for Server {
-//     fn default() -> Self {
-//         let clicker = uinput::default()?
-//             .name("device")?
-//             .event(Mouse::Left)?
-//             .create()?;
-//
-//         let hotkey = HotKey::new(listenor, modifiers, keybind);
-//         Self {
-//             clicker,
-//             hotkey,
-//             interval: Duration::from_millis(200),
-//             enabled: true, // Should probably be false
-//         }
-//     }
-// }
-
 impl Server {
     /// Creates the server and clicker
-    pub fn new() -> Result<Self, Box<dyn Error>> {
+    pub fn new(
+        listenor: evdev::Device,
+        interval: Duration,
+        modifiers: String,
+        keybind: KeyCode,
+    ) -> Result<Self, Box<dyn Error>> {
         let clicker = uinput::default()?
             .name("device")?
             .event(Mouse::Left)?
             .create()?;
 
-        let device =
-            evdev::Device::open("/dev/input/event21").expect("Failed to open default input device");
-        let hotkey = HotKey::new(device, "".to_string(), KeyCode::KEY_F8);
+        let hotkey = HotKey::new(listenor, modifiers, keybind);
         Ok(Self {
             clicker,
             hotkey,
-            interval: Duration::from_millis(200),
+            interval,
             enabled: true,
         })
     }
