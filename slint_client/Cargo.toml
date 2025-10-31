@@ -13,8 +13,8 @@ uinput.workspace = true
 log.workspace = true
 env_logger.workspace = true
 slint = { version = "1.14", features = ["backend-qt", "log", "compat-1-2", "std"], default-features = false }
-serde_json = "1.0.145"
-serde = { version = "1.0.228", features = ["derive"] }
+serde.workspace = true
+serde_json.workspace = true
 
 [build-dependencies]
 slint-build = "1.14"

@@ -1,0 +1,13 @@
+[package]
+name = "lib"
+version.workspace = true
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+tokio = "1.48.0"
