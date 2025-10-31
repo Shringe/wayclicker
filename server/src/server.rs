@@ -90,7 +90,7 @@ impl Server {
     }
 
     /// Sends a left click
-    fn click(&mut self) -> Result<(), Box<dyn Error>> {
+    async fn click(&mut self) -> Result<(), Box<dyn Error>> {
         log::debug!("Sending a left click");
         self.clicker.send(Mouse::Left, 1)?;
         self.clicker.send(Mouse::Left, 0)?;
@@ -103,9 +103,6 @@ impl Server {
         &self,
         socket_path: &'static str,
     ) -> Result<(), Box<dyn Error>> {
-        // Remove old socket if it exists
-        let _ = std::fs::remove_file(socket_path);
-
         let listener = UnixListener::bind(socket_path)?;
         let state = self.state.clone();
 
@@ -127,6 +124,8 @@ impl Server {
             }
         });
 
+        std::fs::remove_file(socket_path)?;
+
         Ok(())
     }
 
@@ -145,7 +144,7 @@ impl Server {
                     .expect("Failed to determine if the hotkey is active");
 
                 if active {
-                    if let Err(e) = self.click() {
+                    if let Err(e) = self.click().await {
                         log::error!("Encountered an error while trying to click: {}", e);
                     }
                 }
