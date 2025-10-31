@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::process::exit;
 use std::sync::Arc;
 use std::{error::Error, time::Duration};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncReadExt;
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::RwLock;
 use tokio::time;
@@ -14,7 +14,6 @@ use uinput::event::controller::Mouse;
 // Evdev is used for detecting keyboard input globally
 use evdev::KeyCode;
 
-use crate::command::Command;
 use crate::hotkey::HotKey;
 
 /// Holds the parsable values behind the json packets send through the unix socket to configure the
@@ -48,7 +47,6 @@ impl Default for ServerState {
     }
 }
 
-#[allow(dead_code)]
 impl ServerState {
     async fn update_with_packet(&self, packet: ServerPacket) {
         *self.enabled.write().await = packet.enabled;
@@ -60,35 +58,6 @@ impl ServerState {
         log::debug!("Received json packet: {:?}", packet);
         self.update_with_packet(packet).await;
         Ok(())
-    }
-
-    /// Handles a single connection to the control socket
-    async fn handle_connection(&self, mut stream: UnixStream) -> Result<(), Box<dyn Error>> {
-        let mut buffer = [0u8; 1024];
-        let n = stream.read(&mut buffer).await?;
-
-        let packet = String::from_utf8_lossy(&buffer[..n]).trim().to_string();
-        log::debug!("Received packet: {}", packet);
-
-        let command = Command::from_packet(packet)?;
-        let response = self.process_command(command).await;
-
-        if let Some(response) = response {
-            stream.write_all(response.as_bytes()).await?;
-        }
-
-        Ok(())
-    }
-
-    /// Processes a command and returns an optional response
-    async fn process_command(&self, command: Command) -> Option<String> {
-        match command {
-            Command::IsEnabled => Some(self.enabled.read().await.to_string()),
-            Command::SetEnabled { value } => {
-                *self.enabled.write().await = value;
-                None
-            }
-        }
     }
 }
 
