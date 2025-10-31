@@ -68,7 +68,7 @@ impl ServerState {
 
 pub struct Server {
     clicker: uinput::device::Device,
-    hotkey: HotKey,
+    hotkey: Arc<RwLock<HotKey>>,
     state: ServerState,
     socket: PathBuf,
 }
@@ -86,7 +86,7 @@ impl Server {
             .event(Mouse::Left)?
             .create()?;
 
-        let hotkey = HotKey::new(listener, modifiers, keybind);
+        let hotkey = Arc::new(RwLock::new(HotKey::new(listener, modifiers, keybind)));
         Ok(Self {
             clicker,
             hotkey,
@@ -145,6 +145,21 @@ impl Server {
         });
     }
 
+    pub async fn listen_for_hotkey(&self) {
+        log::info!("Listening for hotkey");
+        let hotkey = self.hotkey.clone();
+        tokio::spawn(async move {
+            loop {
+                hotkey
+                    .write()
+                    .await
+                    .update()
+                    .await
+                    .expect("Failed to determine if the hotkey is active");
+            }
+        });
+    }
+
     /// Runs the server loop
     pub async fn run(&mut self) {
         log::info!("Server ready");
@@ -159,12 +174,7 @@ impl Server {
                     interval = time::interval(current_interval);
                 }
 
-                let active = self
-                    .hotkey
-                    .is_active()
-                    .expect("Failed to determine if the hotkey is active");
-
-                if active {
+                if *self.hotkey.read().await.active.read().await {
                     if let Err(e) = self.click().await {
                         log::error!("Encountered an error while trying to click: {}", e);
                     }

@@ -1,12 +1,13 @@
 use evdev::{EnumParseError, KeyCode};
-use std::str::FromStr;
+use std::{str::FromStr, sync::Arc};
+use tokio::sync::RwLock;
 
 pub struct HotKey {
     listener: evdev::Device,
     modifiers: String,
     keybind: KeyCode,
     lastkeys: Vec<KeyCode>,
-    active: bool,
+    pub active: Arc<RwLock<bool>>,
 }
 
 impl HotKey {
@@ -16,11 +17,11 @@ impl HotKey {
             modifiers,
             keybind,
             lastkeys: Vec::new(),
-            active: false,
+            active: Arc::new(RwLock::new(false)),
         }
     }
 
-    pub fn is_active(&mut self) -> Result<bool, EnumParseError> {
+    pub async fn update(&mut self) -> Result<(), EnumParseError> {
         let keypresses = self
             .listener
             .get_key_state()
@@ -45,24 +46,25 @@ impl HotKey {
 
                     if !atleast_one_pressed {
                         self.lastkeys = keypresses;
-                        return Ok(self.active);
+                        return Ok(());
                     }
                 } else {
                     // Must contain this single modifier
                     let key = evdev::KeyCode::from_str(m)?;
                     if !keypresses.contains(&key) {
                         self.lastkeys = keypresses;
-                        return Ok(self.active);
+                        return Ok(());
                     }
                 }
             }
         }
 
         // Check for specific key presses
+        let mut active = *self.active.read().await;
         for k in &keypresses {
             if *k == self.keybind && !self.lastkeys.contains(k) {
-                self.active = !self.active;
-                if self.active {
+                active = !active;
+                if active {
                     log::info!("Enabled clicker");
                 } else {
                     log::info!("Disabled clicker");
@@ -70,7 +72,8 @@ impl HotKey {
             }
         }
 
+        *self.active.write().await = active;
         self.lastkeys = keypresses;
-        Ok(self.active)
+        Ok(())
     }
 }

@@ -32,6 +32,7 @@ async fn main() {
                 .await
                 .expect("Failed to start control socket");
             server.wait_for_shutdown().await;
+            server.listen_for_hotkey().await;
             server.run().await;
         }
 
