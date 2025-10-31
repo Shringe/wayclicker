@@ -29,7 +29,22 @@ impl HotKey {
             .iter()
             .collect::<Vec<KeyCode>>();
 
-        // Make sure all modifiers are pressed
+        macro_rules! end {
+            () => {{
+                self.lastkeys = keypresses;
+                return Ok(());
+            }};
+        }
+
+        // Check if the keybind was just pressed (cheap check first)
+        let keybind_just_pressed =
+            keypresses.contains(&self.keybind) && !self.lastkeys.contains(&self.keybind);
+
+        if !keybind_just_pressed {
+            end!()
+        }
+
+        // Ensure modifiers are pressed
         if !self.modifiers.is_empty() {
             for m in self.modifiers.split('+') {
                 if m.contains('-') {
@@ -45,35 +60,26 @@ impl HotKey {
                     }
 
                     if !atleast_one_pressed {
-                        self.lastkeys = keypresses;
-                        return Ok(());
+                        end!()
                     }
                 } else {
                     // Must contain this single modifier
                     let key = evdev::KeyCode::from_str(m)?;
                     if !keypresses.contains(&key) {
-                        self.lastkeys = keypresses;
-                        return Ok(());
+                        end!()
                     }
                 }
             }
         }
 
-        // Check for specific key presses
-        // let mut active = *self.active.read().await;
-        for k in &keypresses {
-            if *k == self.keybind && !self.lastkeys.contains(k) {
-                self.active = !self.active;
-                if self.active {
-                    log::info!("Enabled clicker");
-                } else {
-                    log::info!("Disabled clicker");
-                }
-            }
+        // Toggle active state
+        self.active = !self.active;
+        if self.active {
+            log::info!("Enabled clicker");
+        } else {
+            log::info!("Disabled clicker");
         }
 
-        // *self.active.write().await = active;
-        self.lastkeys = keypresses;
-        Ok(())
+        end!()
     }
 }
