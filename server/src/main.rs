@@ -1,5 +1,4 @@
 mod cli;
-mod command;
 mod hotkey;
 mod server;
 
