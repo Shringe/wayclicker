@@ -148,8 +148,10 @@ impl Server {
     pub async fn listen_for_hotkey(&self) {
         log::info!("Listening for hotkey");
         let hotkey = self.hotkey.clone();
+        let mut polling_rate = time::interval(Duration::from_millis(50));
         tokio::spawn(async move {
             loop {
+                polling_rate.tick().await;
                 hotkey
                     .write()
                     .await
