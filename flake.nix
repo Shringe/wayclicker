@@ -1,6 +1,6 @@
 {
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/release-25.05";
+    nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -51,6 +51,8 @@
             libudev-zero
             pkg-config
             gtk4
+            qt5.qtbase
+            qt5.qtwayland
           ];
         };
       }

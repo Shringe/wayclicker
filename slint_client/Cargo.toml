@@ -1,5 +1,6 @@
 [package]
 name = "slint_client"
+build = "build.rs"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
@@ -11,4 +12,9 @@ evdev.workspace = true
 uinput.workspace = true
 log.workspace = true
 env_logger.workspace = true
-slint = "1.13.1"
+slint = { version = "1.14", features = ["backend-qt"] }
+serde_json = "1.0.145"
+serde = { version = "1.0.228", features = ["derive"] }
+
+[build-dependencies]
+slint-build = "1.14"
