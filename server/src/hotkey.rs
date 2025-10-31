@@ -2,7 +2,7 @@ use evdev::{EnumParseError, KeyCode};
 use std::str::FromStr;
 
 pub struct HotKey {
-    listenor: evdev::Device,
+    listener: evdev::Device,
     modifiers: String,
     keybind: KeyCode,
     lastkeys: Vec<KeyCode>,
@@ -10,9 +10,9 @@ pub struct HotKey {
 }
 
 impl HotKey {
-    pub fn new(listenor: evdev::Device, modifiers: String, keybind: KeyCode) -> Self {
+    pub fn new(listener: evdev::Device, modifiers: String, keybind: KeyCode) -> Self {
         Self {
-            listenor,
+            listener,
             modifiers,
             keybind,
             lastkeys: Vec::new(),
@@ -22,9 +22,9 @@ impl HotKey {
 
     pub fn is_active(&mut self) -> Result<bool, EnumParseError> {
         let keypresses = self
-            .listenor
+            .listener
             .get_key_state()
-            .expect("Failed to get keypresses from listenor")
+            .expect("Failed to get keypresses from listener")
             .iter()
             .collect::<Vec<KeyCode>>();
 
