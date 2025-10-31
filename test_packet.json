@@ -1,3 +1,4 @@
 {
-  "enabled": true
+  "enabled": true,
+  "interval_ms": 2
 }
