@@ -11,6 +11,7 @@ homepage = "https://github.com/Shringe/wayclicker/"
 members = [
   "server",
   "gtk_client",
+  "slint_client",
 ]
 resolver = "2"
 
