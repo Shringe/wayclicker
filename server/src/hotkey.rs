@@ -1,13 +1,12 @@
 use evdev::{EnumParseError, KeyCode};
-use std::{str::FromStr, sync::Arc};
-use tokio::sync::RwLock;
+use std::str::FromStr;
 
 pub struct HotKey {
     listener: evdev::Device,
     modifiers: String,
     keybind: KeyCode,
     lastkeys: Vec<KeyCode>,
-    pub active: Arc<RwLock<bool>>,
+    pub active: bool,
 }
 
 impl HotKey {
@@ -17,7 +16,8 @@ impl HotKey {
             modifiers,
             keybind,
             lastkeys: Vec::new(),
-            active: Arc::new(RwLock::new(false)),
+            // active: Arc::new(RwLock::new(false)),
+            active: false,
         }
     }
 
@@ -60,11 +60,11 @@ impl HotKey {
         }
 
         // Check for specific key presses
-        let mut active = *self.active.read().await;
+        // let mut active = *self.active.read().await;
         for k in &keypresses {
             if *k == self.keybind && !self.lastkeys.contains(k) {
-                active = !active;
-                if active {
+                self.active = !self.active;
+                if self.active {
                     log::info!("Enabled clicker");
                 } else {
                     log::info!("Disabled clicker");
@@ -72,7 +72,7 @@ impl HotKey {
             }
         }
 
-        *self.active.write().await = active;
+        // *self.active.write().await = active;
         self.lastkeys = keypresses;
         Ok(())
     }
