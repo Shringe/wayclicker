@@ -1,4 +1,7 @@
+use file_owner::PathExt;
 use serde::Deserialize;
+use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::process::exit;
 use std::sync::Arc;
@@ -72,7 +75,9 @@ impl ServerState {
 
 pub struct Server {
     clicker: uinput::device::Device,
-    socket: PathBuf,
+    socket_path: PathBuf,
+    socket_group: String,
+    hotkey_poll_interval: Duration,
     state: ServerState,
 }
 
@@ -82,7 +87,9 @@ impl Server {
         listener: evdev::Device,
         modifiers: String,
         keybind: KeyCode,
-        socket: PathBuf,
+        socket_path: PathBuf,
+        socket_group: String,
+        hotkey_poll_interval: Duration,
     ) -> Result<Self, Box<dyn Error>> {
         let clicker = uinput::default()?
             .name("device")?
@@ -92,7 +99,9 @@ impl Server {
         let hotkey = HotKey::new(listener, modifiers, keybind);
         Ok(Self {
             clicker,
-            socket,
+            socket_path,
+            socket_group,
+            hotkey_poll_interval,
             state: ServerState::new(hotkey),
         })
     }
@@ -106,12 +115,20 @@ impl Server {
         Ok(())
     }
 
+    /// Creates the unix socket and applies permissions
+    async fn create_socket(&self) -> Result<UnixListener, Box<dyn Error>> {
+        let listener = UnixListener::bind(&self.socket_path)?;
+        self.socket_path.set_group(self.socket_group.as_str())?;
+        fs::set_permissions(&self.socket_path, fs::Permissions::from_mode(0o770))?;
+        Ok(listener)
+    }
+
     /// Runs the Unix socket listener to control the enabled state
     pub async fn listen_control_socket(&self) -> Result<(), Box<dyn Error>> {
-        let listener = UnixListener::bind(&self.socket)?;
+        let listener = self.create_socket().await?;
         let state = self.state.clone();
 
-        log::info!("Control socket listening at {:?}", self.socket);
+        log::info!("Control socket listening at {:?}", self.socket_path);
         tokio::spawn(async move {
             loop {
                 let (stream, _) = match listener.accept().await {
@@ -133,7 +150,7 @@ impl Server {
 
     /// Waits for the shutdown signal and quits
     pub async fn wait_for_shutdown(&self) {
-        let socket = self.socket.clone();
+        let socket = self.socket_path.clone();
         log::info!("Waiting for shutdown signal");
         tokio::spawn(async {
             match tokio::signal::ctrl_c().await {
@@ -142,7 +159,7 @@ impl Server {
             }
             log::info!("Received shutdown signal, exiting");
 
-            std::fs::remove_file(socket).expect("Failed to clean up socket path");
+            fs::remove_file(socket).expect("Failed to clean up socket path");
             exit(0);
         });
     }
@@ -150,7 +167,7 @@ impl Server {
     pub async fn listen_for_hotkey(&self) {
         log::info!("Listening for hotkey");
         let hotkey = self.state.hotkey.clone();
-        let mut polling_rate = time::interval(Duration::from_millis(50));
+        let mut polling_rate = time::interval(self.hotkey_poll_interval);
         tokio::spawn(async move {
             loop {
                 polling_rate.tick().await;

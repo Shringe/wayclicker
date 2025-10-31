@@ -25,7 +25,7 @@ fn main() -> Result<(), slint::PlatformError> {
         match serde_json::to_string_pretty(&config) {
             Ok(json) => {
                 println!("Saved JSON:\n{}", json);
-                std::fs::write("config.json", json).expect("Unable to write file");
+                // std::fs::write("config.json", json).expect("Unable to write file");
             }
             Err(e) => eprintln!("Error serializing: {}", e),
         }
