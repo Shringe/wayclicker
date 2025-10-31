@@ -1,0 +1,14 @@
+[package]
+name = "slint_client"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+homepage.workspace = true
+license.workspace = true
+
+[dependencies]
+evdev.workspace = true
+uinput.workspace = true
+log.workspace = true
+env_logger.workspace = true
+slint = "1.13.1"
