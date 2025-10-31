@@ -174,7 +174,7 @@ impl Server {
                     interval = time::interval(current_interval);
                 }
 
-                if *self.hotkey.read().await.active.read().await {
+                if self.hotkey.read().await.active {
                     if let Err(e) = self.click().await {
                         log::error!("Encountered an error while trying to click: {}", e);
                     }
