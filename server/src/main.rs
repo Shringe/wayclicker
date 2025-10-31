@@ -5,7 +5,7 @@ mod server;
 
 use crate::server::Server;
 use clap::Parser;
-use std::time::Duration;
+use std::{path::PathBuf, time::Duration};
 
 #[tokio::main]
 async fn main() {
@@ -22,14 +22,20 @@ async fn main() {
             let listener = evdev::Device::open(device)
                 .expect("Failed to open evdev device for listening to the hotkey");
             let interval = Duration::from_millis(interval);
-            let mut server = Server::new(listener, interval, modifiers, keybind)
-                .expect("Failed to create server");
+            let mut server = Server::new(
+                listener,
+                interval,
+                modifiers,
+                keybind,
+                PathBuf::from("/tmp/wayclicker.sock"),
+            )
+            .expect("Failed to create server");
 
             server
-                .listen_control_socket("/tmp/wayclicker.sock")
+                .listen_control_socket()
                 .await
                 .expect("Failed to start control socket");
-
+            server.wait_for_shutdown().await;
             server.run().await;
         }
 

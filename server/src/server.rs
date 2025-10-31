@@ -1,3 +1,6 @@
+use serde::Deserialize;
+use std::path::PathBuf;
+use std::process::exit;
 use std::sync::Arc;
 use std::{error::Error, time::Duration};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -14,6 +17,22 @@ use evdev::KeyCode;
 use crate::command::Command;
 use crate::hotkey::HotKey;
 
+/// Holds the parsable values behind the json packets send through the unix socket to configure the
+/// server
+#[derive(Deserialize, Debug)]
+struct ServerPacket {
+    enabled: bool,
+}
+
+impl ServerPacket {
+    async fn from_packet(stream: &mut UnixStream) -> Result<Self, Box<dyn Error>> {
+        let mut buffer = [0u8; 128];
+        let n = stream.read(&mut buffer).await?;
+        let packet = serde_json::from_slice(&buffer[..n])?;
+        Ok(packet)
+    }
+}
+
 /// Holds the rwlocks to information mutable through unix socket commands
 #[derive(Clone)]
 struct ServerState {
@@ -29,7 +48,20 @@ impl Default for ServerState {
     }
 }
 
+#[allow(dead_code)]
 impl ServerState {
+    async fn update_with_packet(&self, packet: ServerPacket) {
+        *self.enabled.write().await = packet.enabled;
+    }
+
+    /// Handles a single connection packet to the control socket
+    async fn handle_connection_packet(&self, mut stream: UnixStream) -> Result<(), Box<dyn Error>> {
+        let packet = ServerPacket::from_packet(&mut stream).await?;
+        log::debug!("Received json packet: {:?}", packet);
+        self.update_with_packet(packet).await;
+        Ok(())
+    }
+
     /// Handles a single connection to the control socket
     async fn handle_connection(&self, mut stream: UnixStream) -> Result<(), Box<dyn Error>> {
         let mut buffer = [0u8; 1024];
@@ -65,6 +97,7 @@ pub struct Server {
     hotkey: HotKey,
     interval: Duration,
     state: ServerState,
+    socket: PathBuf,
 }
 
 impl Server {
@@ -74,6 +107,7 @@ impl Server {
         interval: Duration,
         modifiers: String,
         keybind: KeyCode,
+        socket: PathBuf,
     ) -> Result<Self, Box<dyn Error>> {
         let clicker = uinput::default()?
             .name("device")?
@@ -86,6 +120,7 @@ impl Server {
             hotkey,
             interval,
             state: ServerState::default(),
+            socket,
         })
     }
 
@@ -99,16 +134,12 @@ impl Server {
     }
 
     /// Runs the Unix socket listener to control the enabled state
-    pub async fn listen_control_socket(
-        &self,
-        socket_path: &'static str,
-    ) -> Result<(), Box<dyn Error>> {
-        let listener = UnixListener::bind(socket_path)?;
+    pub async fn listen_control_socket(&self) -> Result<(), Box<dyn Error>> {
+        let listener = UnixListener::bind(&self.socket)?;
         let state = self.state.clone();
 
+        log::info!("Control socket listening at {:?}", self.socket);
         tokio::spawn(async move {
-            log::info!("Control socket listening at {}", socket_path);
-
             loop {
                 let (stream, _) = match listener.accept().await {
                     Ok(conn) => conn,
@@ -118,15 +149,29 @@ impl Server {
                     }
                 };
 
-                if let Err(e) = state.handle_connection(stream).await {
+                if let Err(e) = state.handle_connection_packet(stream).await {
                     log::error!("Connection handler error: {}", e);
                 }
             }
         });
 
-        std::fs::remove_file(socket_path)?;
-
         Ok(())
+    }
+
+    /// Waits for the shutdown signal and quits
+    pub async fn wait_for_shutdown(&self) {
+        let socket = self.socket.clone();
+        log::info!("Waiting for shutdown signal");
+        tokio::spawn(async {
+            match tokio::signal::ctrl_c().await {
+                Ok(_) => log::debug!("Successfully recieved shutdown signal"),
+                Err(e) => log::error!("Error while waiting for shutdown signal: {}", e),
+            }
+            log::info!("Received shutdown signal, exiting");
+
+            std::fs::remove_file(socket).expect("Failed to clean up socket path");
+            exit(0);
+        });
     }
 
     /// Runs the server loop
