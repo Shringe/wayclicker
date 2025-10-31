@@ -22,6 +22,7 @@ use crate::hotkey::HotKey;
 struct ServerPacket {
     enabled: bool,
     interval_ms: u64,
+    hotkey: u16,
 }
 
 impl ServerPacket {
@@ -40,21 +41,24 @@ struct ServerState {
     enabled: Arc<RwLock<bool>>,
     /// The duration interval between clicks
     interval: Arc<RwLock<Duration>>,
-}
 
-impl Default for ServerState {
-    fn default() -> Self {
-        Self {
-            enabled: Arc::new(RwLock::new(true)),
-            interval: Arc::new(RwLock::new(Duration::from_millis(50))),
-        }
-    }
+    /// The keycode for the hotkey
+    hotkey: Arc<RwLock<HotKey>>,
 }
 
 impl ServerState {
+    pub fn new(hotkey: HotKey) -> Self {
+        Self {
+            enabled: Arc::new(RwLock::new(true)),
+            interval: Arc::new(RwLock::new(Duration::from_millis(50))),
+            hotkey: Arc::new(RwLock::new(hotkey)),
+        }
+    }
+
     async fn update_with_packet(&self, packet: ServerPacket) {
         *self.enabled.write().await = packet.enabled;
         *self.interval.write().await = Duration::from_millis(packet.interval_ms);
+        self.hotkey.write().await.keybind = KeyCode::new(packet.hotkey);
     }
 
     /// Handles a single connection packet to the control socket
@@ -68,9 +72,8 @@ impl ServerState {
 
 pub struct Server {
     clicker: uinput::device::Device,
-    hotkey: Arc<RwLock<HotKey>>,
-    state: ServerState,
     socket: PathBuf,
+    state: ServerState,
 }
 
 impl Server {
@@ -86,12 +89,11 @@ impl Server {
             .event(Mouse::Left)?
             .create()?;
 
-        let hotkey = Arc::new(RwLock::new(HotKey::new(listener, modifiers, keybind)));
+        let hotkey = HotKey::new(listener, modifiers, keybind);
         Ok(Self {
             clicker,
-            hotkey,
-            state: ServerState::default(),
             socket,
+            state: ServerState::new(hotkey),
         })
     }
 
@@ -147,7 +149,7 @@ impl Server {
 
     pub async fn listen_for_hotkey(&self) {
         log::info!("Listening for hotkey");
-        let hotkey = self.hotkey.clone();
+        let hotkey = self.state.hotkey.clone();
         let mut polling_rate = time::interval(Duration::from_millis(50));
         tokio::spawn(async move {
             loop {
@@ -176,7 +178,7 @@ impl Server {
                     interval = time::interval(current_interval);
                 }
 
-                if self.hotkey.read().await.active {
+                if self.state.hotkey.read().await.active {
                     if let Err(e) = self.click().await {
                         log::error!("Encountered an error while trying to click: {}", e);
                     }
