@@ -4,7 +4,7 @@ mod server;
 
 use crate::server::Server;
 use clap::Parser;
-use std::path::PathBuf;
+use std::time::Duration;
 
 #[tokio::main]
 async fn main() {
@@ -15,6 +15,9 @@ async fn main() {
             device,
             modifiers,
             keybind,
+            socket_path,
+            socket_group,
+            hotkey_poll_interval_ms,
         } => {
             env_logger::init();
             let listener = evdev::Device::open(device)
@@ -23,7 +26,9 @@ async fn main() {
                 listener,
                 modifiers,
                 keybind,
-                PathBuf::from("/tmp/wayclicker.sock"),
+                socket_path,
+                socket_group,
+                Duration::from_millis(hotkey_poll_interval_ms),
             )
             .expect("Failed to create server");
 
