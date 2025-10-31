@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::{error::Error, time::Duration};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::UnixListener;
+use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::RwLock;
 use tokio::time;
 
@@ -11,20 +11,66 @@ use uinput::event::controller::Mouse;
 // Evdev is used for detecting keyboard input globally
 use evdev::KeyCode;
 
+use crate::command::Command;
 use crate::hotkey::HotKey;
+
+/// Holds the rwlocks to information mutable through unix socket commands
+#[derive(Clone)]
+struct ServerState {
+    /// Whether or not the daemon listens for hotkeys and clicks
+    enabled: Arc<RwLock<bool>>,
+}
+
+impl Default for ServerState {
+    fn default() -> Self {
+        Self {
+            enabled: Arc::new(RwLock::new(true)),
+        }
+    }
+}
+
+impl ServerState {
+    /// Handles a single connection to the control socket
+    async fn handle_connection(&self, mut stream: UnixStream) -> Result<(), Box<dyn Error>> {
+        let mut buffer = [0u8; 1024];
+        let n = stream.read(&mut buffer).await?;
+
+        let packet = String::from_utf8_lossy(&buffer[..n]).trim().to_string();
+        log::debug!("Received packet: {}", packet);
+
+        let command = Command::from_packet(packet)?;
+        let response = self.process_command(command).await;
+
+        if let Some(response) = response {
+            stream.write_all(response.as_bytes()).await?;
+        }
+
+        Ok(())
+    }
+
+    /// Processes a command and returns an optional response
+    async fn process_command(&self, command: Command) -> Option<String> {
+        match command {
+            Command::IsEnabled => Some(self.enabled.read().await.to_string()),
+            Command::SetEnabled { value } => {
+                *self.enabled.write().await = value;
+                None
+            }
+        }
+    }
+}
 
 pub struct Server {
     clicker: uinput::device::Device,
     hotkey: HotKey,
     interval: Duration,
-    /// Whether or not the daemon listens for hotkeys and clicks
-    enabled: Arc<RwLock<bool>>,
+    state: ServerState,
 }
 
 impl Server {
     /// Creates the server and clicker
     pub fn new(
-        listenor: evdev::Device,
+        listener: evdev::Device,
         interval: Duration,
         modifiers: String,
         keybind: KeyCode,
@@ -34,16 +80,25 @@ impl Server {
             .event(Mouse::Left)?
             .create()?;
 
-        let hotkey = HotKey::new(listenor, modifiers, keybind);
+        let hotkey = HotKey::new(listener, modifiers, keybind);
         Ok(Self {
             clicker,
             hotkey,
             interval,
-            enabled: Arc::new(RwLock::new(true)),
+            state: ServerState::default(),
         })
     }
 
-    /// Spawns a Unix socket listener to control the enabled state
+    /// Sends a left click
+    fn click(&mut self) -> Result<(), Box<dyn Error>> {
+        log::debug!("Sending a left click");
+        self.clicker.send(Mouse::Left, 1)?;
+        self.clicker.send(Mouse::Left, 0)?;
+        self.clicker.synchronize()?;
+        Ok(())
+    }
+
+    /// Runs the Unix socket listener to control the enabled state
     pub async fn listen_control_socket(
         &self,
         socket_path: &'static str,
@@ -52,58 +107,22 @@ impl Server {
         let _ = std::fs::remove_file(socket_path);
 
         let listener = UnixListener::bind(socket_path)?;
-        let enabled = self.enabled.clone();
+        let state = self.state.clone();
 
         tokio::spawn(async move {
             log::info!("Control socket listening at {}", socket_path);
 
             loop {
-                match listener.accept().await {
-                    Ok((mut stream, _)) => {
-                        let enabled = enabled.clone();
-                        tokio::spawn(async move {
-                            let mut buffer = [0u8; 1024];
-
-                            match stream.read(&mut buffer).await {
-                                Ok(n) if n > 0 => {
-                                    let command =
-                                        String::from_utf8_lossy(&buffer[..n]).trim().to_string();
-                                    log::debug!("Received command: {}", command);
-
-                                    let response = match command.as_str() {
-                                        "enable" => {
-                                            *enabled.write().await = true;
-                                            "Enabled\n"
-                                        }
-                                        "disable" => {
-                                            *enabled.write().await = false;
-                                            "Disabled\n"
-                                        }
-                                        "toggle" => {
-                                            let mut e = enabled.write().await;
-                                            *e = !*e;
-                                            if *e { "Enabled\n" } else { "Disabled\n" }
-                                        }
-                                        "status" => {
-                                            if *enabled.read().await {
-                                                "Enabled\n"
-                                            } else {
-                                                "Disabled\n"
-                                            }
-                                        }
-                                        _ => {
-                                            "Unknown command. Use: enable, disable, toggle, or status\n"
-                                        }
-                                    };
-
-                                    let _ = stream.write_all(response.as_bytes()).await;
-                                }
-                                Ok(_) => log::debug!("Empty read from socket"),
-                                Err(e) => log::error!("Failed to read from socket: {}", e),
-                            }
-                        });
+                let (stream, _) = match listener.accept().await {
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        log::error!("Failed to accept connection: {}", e);
+                        continue;
                     }
-                    Err(e) => log::error!("Failed to accept connection: {}", e),
+                };
+
+                if let Err(e) = state.handle_connection(stream).await {
+                    log::error!("Connection handler error: {}", e);
                 }
             }
         });
@@ -119,7 +138,7 @@ impl Server {
         loop {
             interval.tick().await;
 
-            if *self.enabled.read().await {
+            if *self.state.enabled.read().await {
                 let active = self
                     .hotkey
                     .is_active()
@@ -132,14 +151,5 @@ impl Server {
                 }
             }
         }
-    }
-
-    /// Sends a left click
-    fn click(&mut self) -> Result<(), Box<dyn Error>> {
-        log::debug!("Sending a left click");
-        self.clicker.send(Mouse::Left, 1)?;
-        self.clicker.send(Mouse::Left, 0)?;
-        self.clicker.synchronize()?;
-        Ok(())
     }
 }

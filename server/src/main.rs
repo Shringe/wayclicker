@@ -1,4 +1,5 @@
 mod cli;
+mod command;
 mod hotkey;
 mod server;
 
@@ -18,10 +19,10 @@ async fn main() {
             keybind,
         } => {
             env_logger::init();
-            let listenor = evdev::Device::open(device)
+            let listener = evdev::Device::open(device)
                 .expect("Failed to open evdev device for listening to the hotkey");
             let interval = Duration::from_millis(interval);
-            let mut server = Server::new(listenor, interval, modifiers, keybind)
+            let mut server = Server::new(listener, interval, modifiers, keybind)
                 .expect("Failed to create server");
 
             server
