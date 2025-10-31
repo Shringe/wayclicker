@@ -18,10 +18,6 @@ pub enum Mode {
         #[arg(long)]
         device: PathBuf,
 
-        /// Time to sleep in between clicks in milliseconds
-        #[arg(long, default_value_t = 50)]
-        interval: u64,
-
         /// Modifiers for the keybind. Can be empty. Use - to define optional alternatives to the
         /// modifier, like to allow both left/right control instead of just one. Use + to add
         /// modifiers, incase you want both shift+ctrl for example.

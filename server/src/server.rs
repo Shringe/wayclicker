@@ -21,6 +21,7 @@ use crate::hotkey::HotKey;
 #[derive(Deserialize, Debug)]
 struct ServerPacket {
     enabled: bool,
+    interval_ms: u64,
 }
 
 impl ServerPacket {
@@ -37,12 +38,15 @@ impl ServerPacket {
 struct ServerState {
     /// Whether or not the daemon listens for hotkeys and clicks
     enabled: Arc<RwLock<bool>>,
+    /// The duration interval between clicks
+    interval: Arc<RwLock<Duration>>,
 }
 
 impl Default for ServerState {
     fn default() -> Self {
         Self {
             enabled: Arc::new(RwLock::new(true)),
+            interval: Arc::new(RwLock::new(Duration::from_millis(50))),
         }
     }
 }
@@ -50,6 +54,7 @@ impl Default for ServerState {
 impl ServerState {
     async fn update_with_packet(&self, packet: ServerPacket) {
         *self.enabled.write().await = packet.enabled;
+        *self.interval.write().await = Duration::from_millis(packet.interval_ms);
     }
 
     /// Handles a single connection packet to the control socket
@@ -64,7 +69,6 @@ impl ServerState {
 pub struct Server {
     clicker: uinput::device::Device,
     hotkey: HotKey,
-    interval: Duration,
     state: ServerState,
     socket: PathBuf,
 }
@@ -73,7 +77,6 @@ impl Server {
     /// Creates the server and clicker
     pub fn new(
         listener: evdev::Device,
-        interval: Duration,
         modifiers: String,
         keybind: KeyCode,
         socket: PathBuf,
@@ -87,7 +90,6 @@ impl Server {
         Ok(Self {
             clicker,
             hotkey,
-            interval,
             state: ServerState::default(),
             socket,
         })
@@ -146,12 +148,17 @@ impl Server {
     /// Runs the server loop
     pub async fn run(&mut self) {
         log::info!("Server ready");
-        let mut interval = time::interval(self.interval);
+        let mut interval = time::interval(*self.state.interval.read().await);
 
         loop {
             interval.tick().await;
 
             if *self.state.enabled.read().await {
+                let current_interval = *self.state.interval.read().await;
+                if interval.period() != current_interval {
+                    interval = time::interval(current_interval);
+                }
+
                 let active = self
                     .hotkey
                     .is_active()
