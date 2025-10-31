@@ -4,7 +4,7 @@ use std::str::FromStr;
 pub struct HotKey {
     listener: evdev::Device,
     modifiers: String,
-    keybind: KeyCode,
+    pub keybind: KeyCode,
     lastkeys: Vec<KeyCode>,
     pub active: bool,
 }
