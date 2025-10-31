@@ -1,12 +1,11 @@
 use file_owner::PathExt;
-use serde::Deserialize;
+use lib::ServerPacket;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::process::exit;
 use std::sync::Arc;
 use std::{error::Error, time::Duration};
-use tokio::io::AsyncReadExt;
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::RwLock;
 use tokio::time;
@@ -18,24 +17,6 @@ use uinput::event::controller::Mouse;
 use evdev::KeyCode;
 
 use crate::hotkey::HotKey;
-
-/// Holds the parsable values behind the json packets send through the unix socket to configure the
-/// server
-#[derive(Deserialize, Debug)]
-struct ServerPacket {
-    enabled: bool,
-    interval_ms: u64,
-    hotkey: u16,
-}
-
-impl ServerPacket {
-    async fn from_packet(stream: &mut UnixStream) -> Result<Self, Box<dyn Error>> {
-        let mut buffer = [0u8; 128];
-        let n = stream.read(&mut buffer).await?;
-        let packet = serde_json::from_slice(&buffer[..n])?;
-        Ok(packet)
-    }
-}
 
 /// Holds the rwlocks to information mutable through unix socket commands
 #[derive(Clone)]
