@@ -117,6 +117,7 @@ impl Server {
 
     /// Creates the unix socket and applies permissions
     async fn create_socket(&self) -> Result<UnixListener, Box<dyn Error>> {
+        log::debug!("Creating listener and setting permissions");
         let listener = UnixListener::bind(&self.socket_path)?;
         self.socket_path.set_group(self.socket_group.as_str())?;
         fs::set_permissions(&self.socket_path, fs::Permissions::from_mode(0o770))?;
