@@ -12,7 +12,10 @@ slint::include_modules!();
 fn main() -> Result<(), slint::PlatformError> {
     let ui = MainWindow::new()?;
 
-    let ui_handle = ui.as_weak();
+    let default_key_code = evdev::KeyCode::KEY_F8.code();
+    ui.set_keycode(default_key_code.to_string().into());
+
+    // let ui_handle = ui.as_weak();
     // ui.on_save_clicked(move || {
     //     let ui = ui_handle.unwrap();
     //
