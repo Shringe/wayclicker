@@ -2,6 +2,7 @@ import { VerticalBox, HorizontalBox, CheckBox, LineEdit, Button } from "std-widg
 
 export component IntervalInput {
     in property <string> label;
+    in-out property <string> input;
 
     HorizontalLayout {
         spacing: 10px;
@@ -13,6 +14,7 @@ export component IntervalInput {
         LineEdit {
             input-type: number;
             placeholder-text: "Duration in milliseconds";
+            text <=> input;
         }
     }
 }
@@ -31,7 +33,7 @@ export component Divider {
 
         Rectangle {
             height: 2px;
-            background: lightslategray;
+            background: grey;
             vertical-stretch: 0;
         }
     }
@@ -43,10 +45,13 @@ export component MainWindow inherits Window {
     height: 300px;
 
     in-out property <bool> enabled: false;
-    in-out property <string> interval-ms: 50;
+    in-out property <bool> active: false;
+
+    in-out property <string> interval: 50;
     in-out property <string> keycode: 0;
 
-    callback toggle-clicker();
+    callback send-server-packet();
+    callback load-server-packet();
 
     VerticalBox {
         Divider {
@@ -55,15 +60,18 @@ export component MainWindow inherits Window {
 
         IntervalInput {
             label: "Click Interval";
+            input <=> interval;
         }
 
         IntervalInput {
             label: "KeyCode";
+            input <=> keycode;
         }
 
         Button {
             text: "Active";
             checkable: true;
+            checked <=> active;
         }
 
         Divider {
@@ -76,17 +84,20 @@ export component MainWindow inherits Window {
             Button {
                 preferred-width: 135px;
                 text: "Send settings";
+                clicked => send-server-packet();
             }
 
             Button {
                 preferred-width: 135px;
                 text: "Request settings";
+                clicked => load-server-packet();
             }
         }
 
         Button {
             text: "Enabled";
             checkable: true;
+            checked <=> enabled;
         }
     }
 }
