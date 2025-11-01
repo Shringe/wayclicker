@@ -1,64 +1,67 @@
 import { VerticalBox, HorizontalBox, CheckBox, LineEdit, Button } from "std-widgets.slint";
 
 export component MainWindow inherits Window {
-  title: "Config Editor";
-  // preferred-width: 400px;
-  // preferred-height: 250px;
+    title: "Config Editor";
 
-  in-out property <bool> enabled: false;
-  in-out property <string> interval-ms: "0";
-  in-out property <string> keycode: "0";
+    in-out property <bool> enabled: false;
+    in-out property <string> interval-ms: "0";
+    in-out property <string> keycode: "0";
 
-  callback save-clicked();
-  callback load-clicked();
+    callback save-clicked();
+    callback load-clicked();
 
-  VerticalBox {
-    // padding: 20px;
-    // spacing: 15px;
+    VerticalBox {
+        HorizontalBox {
+            Text {
+                text: "Enabled:";
+                vertical-alignment: center;
+            }
 
-    HorizontalBox {
-      Text {
-        text: "Enabled:";
-        vertical-alignment: center;
-      }
-      CheckBox {
-        checked <=> enabled;
-      }
+            CheckBox {
+                checked <=> enabled;
+            }
+        }
+
+        HorizontalBox {
+            Text {
+                text: "Interval (msss):";
+                vertical-alignment: center;
+                horizontal-alignment: left;
+            }
+
+            LineEdit {
+                text <=> interval-ms;
+                placeholder-text: "Enter milliseconds";
+            }
+        }
+
+        HorizontalBox {
+            Text {
+                text: "Keycode:";
+                vertical-alignment: center;
+            }
+
+            LineEdit {
+                text <=> keycode;
+                placeholder-text: "Enter keycode";
+            }
+        }
+
+        HorizontalBox {
+            spacing: 10px;
+            Button {
+                text: "Save to JSON";
+                clicked => {
+                    save-clicked();
+                }
+            }
+
+            Button {
+                text: "Load from JSON";
+                clicked => {
+                    load-clicked();
+                }
+            }
+        }
     }
-
-    HorizontalBox {
-      Text {
-        text: "Interval (ms):";
-        vertical-alignment: center;
-        horizontal-alignment: left;
-      }
-      LineEdit {
-        text <=> interval-ms;
-        placeholder-text: "Enter milliseconds";
-      }
-    }
-
-    HorizontalBox {
-      Text {
-        text: "Keycode:";
-        vertical-alignment: center;
-      }
-      LineEdit {
-        text <=> keycode;
-        placeholder-text: "Enter keycode";
-      }
-    }
-
-    HorizontalBox {
-      spacing: 10px;
-      Button {
-        text: "Save to JSON";
-        clicked => { save-clicked(); }
-      }
-      Button {
-        text: "Load from JSON";
-        clicked => { load-clicked(); }
-      }
-    }
-  }
 }
