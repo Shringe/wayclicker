@@ -1,6 +1,6 @@
 import { VerticalBox, HorizontalBox, CheckBox, LineEdit, Button } from "std-widgets.slint";
 
-export component IntervalInput {
+export component IntervalInput inherits Window {
     in property <string> label;
     in-out property <string> input;
 
@@ -19,12 +19,12 @@ export component IntervalInput {
     }
 }
 
-export component Divider {
-    in property <string> title;
+export component Divider inherits Window {
+    in property <string> label;
 
     VerticalLayout {
         Text {
-            text: title;
+            text: label;
             height: 16px;
             horizontal-alignment: center;
             vertical-alignment: center;
@@ -55,7 +55,7 @@ export component MainWindow inherits Window {
 
     VerticalBox {
         Divider {
-            title: "Clicker Settings";
+            label: "Clicker Settings";
         }
 
         IntervalInput {
@@ -75,7 +75,7 @@ export component MainWindow inherits Window {
         }
 
         Divider {
-            title: "Server";
+            label: "Server";
         }
 
         HorizontalLayout {
