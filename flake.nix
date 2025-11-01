@@ -53,6 +53,7 @@
             gtk4
             qt5.qtbase
             qt5.qtwayland
+            slint-viewer
           ];
         };
       }
