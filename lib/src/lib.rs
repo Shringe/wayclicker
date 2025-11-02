@@ -1,11 +1,11 @@
 use std::error::Error;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncReadExt, net::UnixStream};
 
 /// Holds the parsable values behind the json packets send through the unix socket to configure the
 /// server
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ServerPacket {
     pub enabled: bool,
     pub interval_ms: u64,

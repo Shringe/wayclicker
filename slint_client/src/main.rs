@@ -1,56 +1,61 @@
-use serde::{Deserialize, Serialize};
-use slint::*;
+use lib::ServerPacket;
+use std::{
+    io::{self, Write},
+    num::ParseIntError,
+    os::unix::net::UnixStream,
+};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct Config {
-    enabled: bool,
-    interval_ms: usize,
-    keycode: u16,
-}
+const SOCKET_PATH: &str = "/tmp/wayclicker.sock";
 
 slint::include_modules!();
 fn main() -> Result<(), slint::PlatformError> {
+    env_logger::init();
     let ui = MainWindow::new()?;
 
     let default_key_code = evdev::KeyCode::KEY_F8.code();
     ui.set_keycode(default_key_code.to_string().into());
 
-    // let ui_handle = ui.as_weak();
-    // ui.on_save_clicked(move || {
-    //     let ui = ui_handle.unwrap();
-    //
-    //     let config = Config {
-    //         enabled: ui.get_enabled(),
-    //         interval_ms: ui.get_interval_ms().parse().unwrap_or(0),
-    //         keycode: ui.get_keycode().parse().unwrap_or(0),
-    //     };
-    //
-    //     match serde_json::to_string_pretty(&config) {
-    //         Ok(json) => {
-    //             println!("Saved JSON:\n{}", json);
-    //             // std::fs::write("config.json", json).expect("Unable to write file");
-    //         }
-    //         Err(e) => eprintln!("Error serializing: {}", e),
-    //     }
-    // });
-    //
-    // let ui_handle = ui.as_weak();
-    // ui.on_load_clicked(move || {
-    //     let ui = ui_handle.unwrap();
-    //
-    //     match std::fs::read_to_string("config.json") {
-    //         Ok(contents) => match serde_json::from_str::<Config>(&contents) {
-    //             Ok(config) => {
-    //                 ui.set_enabled(config.enabled);
-    //                 ui.set_interval_ms(config.interval_ms.to_string().into());
-    //                 ui.set_keycode(config.keycode.to_string().into());
-    //                 println!("Loaded configuration successfully");
-    //             }
-    //             Err(e) => eprintln!("Error parsing JSON: {}", e),
-    //         },
-    //         Err(e) => eprintln!("Error reading file: {}", e),
-    //     }
-    // });
+    let ui_handle = ui.as_weak();
+    ui.on_send_server_packet(move || {
+        let ui = ui_handle.unwrap();
+        let packet = match formulate_packet(&ui) {
+            Ok(packet) => packet,
+            Err(e) => {
+                log::error!("Failed to formulate packet: {}", e);
+                return;
+            }
+        };
+
+        log::debug!("Created packet: {:?}", packet);
+        let json = match serde_json::to_string(&packet) {
+            Ok(json) => json,
+            Err(e) => {
+                log::error!("Failed to serialize packet: {}", e);
+                return;
+            }
+        };
+
+        match send_packet(&json) {
+            Ok(_) => log::debug!("Successfully send packet to server"),
+            Err(e) => log::error!("Failed to send packet to server: {}", e),
+        }
+    });
 
     ui.run()
+}
+
+fn send_packet(packet: &String) -> io::Result<()> {
+    let mut stream = UnixStream::connect(SOCKET_PATH)?;
+    stream.write_all(packet.as_bytes())?;
+    stream.flush()?;
+    stream.shutdown(std::net::Shutdown::Both)?;
+    Ok(())
+}
+
+fn formulate_packet(ui: &MainWindow) -> Result<ServerPacket, ParseIntError> {
+    Ok(ServerPacket {
+        enabled: ui.get_enabled(),
+        interval_ms: ui.get_interval().parse()?,
+        hotkey: ui.get_keycode().parse()?,
+    })
 }
